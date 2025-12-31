@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "664030112148",
+    "project_id": "projectgm-c1b05",
+    "storage_bucket": "projectgm-c1b05.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664030112148:android:1141e355199f2b643b0781",
+        "android_client_info": {
+          "package_name": "com.example.tap1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCivdtlgsbF5tzMFBLQLT1p_F0jvXbw9kg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
