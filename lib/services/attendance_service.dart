@@ -1,19 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum AbsenButtonState { NA, MASUK, PULANG }
+enum AbsenButtonState { NA, MASUK, TELAT, PULANG }
+
 enum TimePhase {
   FREE,
   TENGGANG_MASUK,
   KERJA,
   TENGGANG_PULANG,
 }
+// Tambahkan di class AttendanceService
+// Map libur: key = DateTime (tahun, bulan, tanggal), value = '1' (approved) / '0' (pending)
+Map<String, String> liburMap = {};
+
+// Fungsi untuk ambil status libur hari tertentu
+String _getLiburForDay(DateTime day) {
+  final key = day.day.toString(); // ambil tanggal sebagai string
+  return liburMap[key] ?? '';     // '' artinya bukan libur
+}
+
+
 
 class AttendanceService {
   String status = 'Belum Absen';
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+int permit = 0; // 0 = tidak ada izin, 1 = ada izin
   bool _isFetching = false;
+DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
   // ===== JAM SHIFT =====
   DateTime? _masukMulai;
@@ -37,43 +50,72 @@ class AttendanceService {
   // ==================== LOGIKA TOMBOL ====================
   // tetap ada getter lama untuk kompatibilitas HomePage
   bool get canAbsenMasuk {
+    
     if (_masukMulai == null || _masukAkhir == null) return false;
     final now = DateTime.now();
     return now.isAfter(_masukMulai!) && now.isBefore(_masukAkhir!);
   }
+bool get isButtonDisabled {
+  // Tombol disable jika absenButtonState = NA atau permit = 1
+  return absenButtonState == AbsenButtonState.NA || permit == 1;
+}
 
-  bool get isButtonDisabled => absenButtonState == AbsenButtonState.NA;
 
-  AbsenButtonState get absenButtonState {
-    final now = DateTime.now();
+AbsenButtonState get absenButtonState {
+  final now = DateTime.now();
 
-    if (_masukMulai == null || _masukAkhir == null || _pulangMulai == null || _pulangAkhir == null) {
-      return AbsenButtonState.NA;
-    }
-
-    if (now.isAfter(_masukMulai!) && now.isBefore(_masukAkhir!)) return AbsenButtonState.MASUK;
-    if (now.isAfter(_pulangMulai!) && now.isBefore(_pulangAkhir!)) return AbsenButtonState.PULANG;
-
+  // shift belum di-set → tombol nonaktif
+  if (_masukMulai == null || _masukAkhir == null || _pulangMulai == null || _pulangAkhir == null) {
     return AbsenButtonState.NA;
   }
 
-  String get buttonText {
-    switch (absenButtonState) {
-      case AbsenButtonState.MASUK:
-        return 'MASUK';
-      case AbsenButtonState.PULANG:
-        return 'PULANG';
-      case AbsenButtonState.NA:
-      default:
-        return '';
-    }
+  // ===== CEK LIBUR APPROVED =====
+  final liburStatus = _getLiburForDay(now); // ambil status libur hari ini
+  if (liburStatus == '1') {
+    // Libur approved → tombol nonaktif
+    return AbsenButtonState.NA;
   }
+
+  // Tenggang absen masuk
+  if (now.isAfter(_masukMulai!) && now.isBefore(_masukAkhir!)) return AbsenButtonState.MASUK;
+
+  // Telat
+  if (now.isAfter(_masukAkhir!) && now.isBefore(_pulangMulai!)) return AbsenButtonState.TELAT;
+
+  // Absen pulang
+  if (now.isAfter(_pulangMulai!) && now.isBefore(_pulangAkhir!)) return AbsenButtonState.PULANG;
+
+  // Luar jam shift → tombol nonaktif
+  return AbsenButtonState.NA;
+}
+
+
+
+
+
+String get buttonText {
+  if (permit == 1) return 'ANDA SEDANG LIBUR';
+
+  switch (absenButtonState) {
+    case AbsenButtonState.MASUK:
+      return 'MASUK';
+    case AbsenButtonState.TELAT:
+      return 'ABSEN TELAT';
+    case AbsenButtonState.PULANG:
+      return 'PULANG';
+    case AbsenButtonState.NA:
+    default:
+      return '';
+  }
+}
+
+
   String get phaseText {
   switch (currentPhase) {
     case TimePhase.TENGGANG_MASUK:
       return 'Tenggang waktu absen masuk';
     case TimePhase.KERJA:
-      return 'Sedang waktu kerja';
+      return 'Waktunya kerjaaa';
     case TimePhase.TENGGANG_PULANG:
       return 'Tenggang waktu absen pulang';
     case TimePhase.FREE:
@@ -134,39 +176,154 @@ TimePhase get currentPhase {
   return TimePhase.FREE;
 }
 
+Future<void> loadLiburFromFirestore() async {
+  try {
+    final snapshot = await FirebaseFirestore.instance.collection('permit').get();
+
+    if (snapshot.docs.isEmpty) {
+      print('Libur Map kosong');
+      liburMap.clear();
+      return;
+    }
+
+    liburMap.clear(); // reset dulu
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      // misal field 'tanggal' berisi angka tanggal 1..31
+      // dan field 'status' berisi '1' (approved) / '0' (pending)
+      final tanggal = data['tanggal']?.toString();
+      final status = data['status']?.toString() ?? '0';
+
+      if (tanggal != null) {
+        liburMap[tanggal] = status;
+      }
+    }
+
+    print('=== DEBUG LIBUR ===');
+    print('Libur Map: $liburMap');
+
+    // cek status libur hari ini
+    final todayStatus = _getLiburForDay(DateTime.now());
+    print('Status libur hari ini (${DateTime.now().day}): $todayStatus');
+
+  } catch (e) {
+    print('Gagal load libur dari Firestore: $e');
+    liburMap.clear();
+  }
+}
+Future<void> loadPermitFromFirestore(String userName) async {
+  try {
+    final now = DateTime.now();
+    final yearDoc = now.year.toString();
+    final monthCol = now.month.toString(); // 1..12
+    final dayField = now.day.toString();   // 1..31
+
+    final docSnapshot = await FirebaseFirestore.instance
+        .collection('permit')
+        .doc(yearDoc)
+        .collection(monthCol)
+        .doc(userName)
+        .get();
+
+    if (!docSnapshot.exists) {
+      permit = 0;
+      print('Permit hari ini: $permit (doc tidak ada)');
+      return;
+    }
+
+    final data = docSnapshot.data() ?? {};
+    final value = data[dayField]?.toString() ?? '0';
+
+    // 1 = ada izin, 0 = tidak ada izin
+    permit = value == '1' ? 1 : 0;
+
+    print('Permit hari ini: $permit');
+  } catch (e) {
+    permit = 0;
+    print('Gagal load permit hari ini: $e');
+  }
+}
+
 
   // ==================== FIRESTORE ====================
-  Future<String> handleAbsenWithNotif(String userName) async {
-    final now = DateTime.now();
-    final buttonState = absenButtonState;
+Future<String> handleAbsenWithNotif(String userName) async {
+  final now = DateTime.now();
+  final buttonState = absenButtonState;
 
-    if (buttonState == AbsenButtonState.NA) return 'Tombol sedang tidak aktif';
+  if (buttonState == AbsenButtonState.NA) return 'Tombol sedang tidak aktif';
 
-    final yearDoc = now.year.toString();
-    final monthCol = now.month.toString().padLeft(2, '0');
-    final dayField = now.day.toString().padLeft(2, '0');
-    final userDocRef = _firestore.collection('attendance').doc(yearDoc).collection(monthCol).doc(userName);
+  final yearDoc = now.year.toString();
+  final monthCol = now.month.toString(); // 1,2,3...
+  final dayField = now.day.toString().padLeft(2, '0'); // 01,02,...
 
-    final snapshot = await userDocRef.get();
-    final data = snapshot.data() ?? {};
-    final todayValue = data[dayField];
+  final attendanceDocRef = _firestore
+      .collection('attendance')
+      .doc(yearDoc)
+      .collection(monthCol)
+      .doc(userName);
 
-    if (buttonState == AbsenButtonState.MASUK) {
-      if (todayValue == 0) return 'Anda sudah absen masuk';
-      await userDocRef.set({dayField: 0}, SetOptions(merge: true));
-      status = 'Sudah Masuk';
-      return '✅ Absen masuk berhasil';
-    }
+  final telatDocRef = _firestore
+      .collection('telat')
+      .doc(yearDoc)
+      .collection(monthCol)
+      .doc(userName);
 
-    if (buttonState == AbsenButtonState.PULANG) {
-      if (todayValue == 1) return 'Anda sudah absen pulang';
-      await userDocRef.set({dayField: 1}, SetOptions(merge: true));
-      status = 'Sudah Pulang';
-      return '✅ Absen pulang berhasil';
-    }
+  // field per tanggal
+  final masukField = '${dayField}_masuk';
+  final pulangField = '${dayField}_pulang';
+  final telatField = '${dayField}_telat';
 
-    return '⚠ Terjadi kesalahan';
+  // ambil data attendance dan telat
+  final attendanceSnapshot = await attendanceDocRef.get();
+  final attendanceData = attendanceSnapshot.data() ?? {};
+
+  final telatSnapshot = await telatDocRef.get();
+  final telatData = telatSnapshot.data() ?? {};
+
+  // ===== MASUK =====
+  if (buttonState == AbsenButtonState.MASUK) {
+    if (attendanceData.containsKey(masukField)) return 'Anda sudah absen masuk';
+
+    await attendanceDocRef.set({masukField: now}, SetOptions(merge: true));
+    await telatDocRef.set({telatField: null}, SetOptions(merge: true)); // hadir tepat waktu
+
+    status = 'Sudah Masuk';
+    return 'Absen masuk berhasil';
   }
+
+  // ===== PULANG =====
+  if (buttonState == AbsenButtonState.PULANG) {
+    if (attendanceData.containsKey(pulangField)) return 'Anda sudah absen pulang';
+
+    await attendanceDocRef.set({pulangField: now}, SetOptions(merge: true));
+
+    // jika telat belum ada, set '1'
+    if (!telatData.containsKey(telatField) || telatData[telatField] == null) {
+      await telatDocRef.set({telatField: '1'}, SetOptions(merge: true));
+    }
+
+    status = 'Sudah Pulang';
+    return 'Absen pulang berhasil';
+  }
+
+  // ===== TELAT =====
+  if (buttonState == AbsenButtonState.TELAT) {
+    if (telatData.containsKey(telatField)) return 'Anda sudah absen telat';
+
+    // set absen masuk walau telat
+    await attendanceDocRef.set({masukField: now}, SetOptions(merge: true));
+
+    // set telat = '1'
+    await telatDocRef.set({telatField: '1'}, SetOptions(merge: true));
+
+    status = 'Telat';
+    return 'Absen telat berhasil';
+  }
+
+  return '⚠ Terjadi kesalahan';
+}
+
 
   // ==================== RESET HARIAN ====================
   Future<void> checkResetDaily() async {

@@ -1,3 +1,4 @@
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tap1/main.dart';
 import 'package:tap1/pages/notification.dart';
 import 'package:tap1/services/calendar_widget.dart';
+import 'package:tap1/widget/appbar.dart';
+import 'package:tap1/widget/bubble_widget.dart';
+import 'package:tap1/widget/drawer.dart';
+import 'package:tap1/widget/location_status_card.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/location_service.dart';
@@ -26,7 +31,7 @@ final Random random = Random();
   DateTime? _pulangTime; // waktu pulang shift
   Duration remainingTime = Duration.zero;
   DateTime? _masukTime; // jam masuk shift
-  
+  late final VoidCallback onLogoutTap; 
   
   double? latitude;
   double? longitude;
@@ -60,7 +65,7 @@ IconData _phaseIcon(TimePhase phase) {
       return Icons.login;
 
     case TimePhase.KERJA:
-      return Icons.work;
+      return Icons.work_history;
 
     case TimePhase.TENGGANG_PULANG:
       return Icons.home; // tetap oke untuk biru
@@ -70,14 +75,33 @@ IconData _phaseIcon(TimePhase phase) {
   }
 }
 
-
+Future<void> _initAttendance() async {
+  await attendanceService.loadShiftTimesFromLocal();   // load jam shift
+  await attendanceService.loadLiburFromFirestore();    // load data libur
+  setState(() {}); // update UI agar tombol absen ter-disable jika hari libur
+}
   // Animation
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
 Timer? _countdownTimer;
 @override
+@override
 void initState() {
   super.initState();
+SharedPreferences.getInstance().then((prefs) {
+  final userName = prefs.getString('nama') ?? 'User';
+  attendanceService.loadPermitFromFirestore(userName).then((_) {
+    setState(() {});
+  });
+});
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await _initAttendance();
+    attendanceService.checkResetDaily();
+    _loadLocalName();
+    _getLocation();
+  });
+    attendanceService.loadLiburFromFirestore();   
  attendanceService.checkResetDaily();
   // Timer utama untuk jam sekarang + update countdown
   timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -338,23 +362,11 @@ Future<void> _getLocation() async {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child:
-                  Text('Molecule.io', style: TextStyle(color: Colors.white, fontSize: 24)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
+    drawer: AppDrawer(
+  userName: localName,
+  onLogoutTap: _confirmLogout, // harus sama persis dengan nama parameter di drawer
+),
+
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: Stack(
@@ -362,142 +374,26 @@ Future<void> _getLocation() async {
                   const BubbleWidget(),
             CustomScrollView(
               slivers: [
- SliverAppBar(
+SliverAppBar(
   pinned: true,
   expandedHeight: 90,
   backgroundColor: Colors.transparent,
   elevation: 0,
   forceElevated: true,
-  automaticallyImplyLeading: false, // 🔴 Hapus burger otomatis
+  automaticallyImplyLeading: false,
   shape: const RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
   ),
-  flexibleSpace: Stack(
-    children: [
-      // Background gradient + shadow
-      Container(
-        height: 130,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color.fromARGB(255, 49, 158, 248), Color.fromARGB(255, 59, 131, 220)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: const BorderRadius.only(bottomRight: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 0,
-              offset: const Offset(0, 0),
-            ),
-          ],
-        ),
-      ),
-
-      // Floating shapes
-      Positioned(
-        top: 50,
-        right: 40,
-        child: CircleAvatar(radius: 12, backgroundColor: Colors.white.withOpacity(0.1)),
-      ),
-      // Positioned(
-      //   top: 40,
-      //   left: 5,
-      //   child: CircleAvatar(radius: 18, backgroundColor: Colors.yellow.withOpacity(1)),
-      // ),
-      Positioned(
-        top: 70,
-        right: 50,
-        child: CircleAvatar(radius: 6, backgroundColor: Colors.yellow.withOpacity(0.1)),
-      ),
-
-      // Teks di kiri bawah
-    // Teks di kiri bawah
-
-
-
-
-Positioned(
-  left: 20,
-  bottom: 30,
-  child: Stack(
-    clipBehavior: Clip.none,
-    children: [
-      // Simbol mengambang acak
-      ...List.generate(15, (index) {
-        final symbols = ['X', 'O', '▢', '△'];
-        final symbol = symbols[random.nextInt(symbols.length)];
-        final leftOffset = random.nextDouble() * 50; // posisi acak horizontal
-        final topOffset = random.nextDouble() *120;  // posisi acak vertikal
-        final opacity = 0.05 + random.nextDouble() * 0.15; // opacity acak
-        final fontSize = 10 + random.nextInt(6); // ukuran acak 10-15
-
-        return Positioned(
-          left: leftOffset,
-          top: topOffset,
-          child: Text(
-            symbol,
-            style: TextStyle(
-              color: Colors.white.withOpacity(opacity),
-              fontSize: fontSize.toDouble(),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );
-      }),
-
-      // Teks utama
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            localName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 0),
-          const Text(
-            'Gaya Group',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    ],
-  ),
+flexibleSpace: Builder(
+  builder: (context) {
+    return HeaderWithSymbols(
+      name: localName,
+      onDrawerTap: () => Scaffold.of(context).openDrawer(),
+    );
+  },
 ),
 
-
-
-      // Matahari kanan bawah (fungsi drawer)
-      Positioned(
-        bottom: 40,
-        right: 16,
-        child: Builder(
-          builder: (context) => GestureDetector(
-            onTap: () => Scaffold.of(context).openDrawer(),
-            child: const Icon(
-              Icons.wb_sunny,
-              color: Colors.yellowAccent,
-              size: 28,
-            ),
-          ),
-        ),
-      ),
-    ],
-  ),
-)
-,
+),
   SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -547,39 +443,39 @@ Container(
         attendanceService.canAbsenMasuk)
 
 
-Container(
-  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-  decoration: BoxDecoration(
-    color: (isUrgent ? Colors.red : Colors.blue).withOpacity(0.1),
-    borderRadius: BorderRadius.circular(20),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.05),
-        blurRadius: 4,
-        offset: const Offset(0, 2),
-      ),
-    ],
-  ),
-  child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(
-        Icons.alarm,
-        size: 18,
-        color: isUrgent ? Colors.red : Colors.blue,
-      ),
-      const SizedBox(width: 6),
-      Text(
-        'Sisa waktu absen: ${attendanceService.formatDuration(attendanceService.remainingTimeMasuk)}',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: isUrgent ? Colors.red : Colors.blue,
-        ),
-      ),
-    ],
-  ),
-),
+// Container(
+//   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+//   decoration: BoxDecoration(
+//     color: (isUrgent ? Colors.red : Colors.blue).withOpacity(0.1),
+//     borderRadius: BorderRadius.circular(20),
+//     boxShadow: [
+//       BoxShadow(
+//         color: Colors.black.withOpacity(0.05),
+//         blurRadius: 4,
+//         offset: const Offset(0, 2),
+//       ),
+//     ],
+//   ),
+//   child: Row(
+//     mainAxisSize: MainAxisSize.min,
+//     children: [
+//       Icon(
+//         Icons.alarm,
+//         size: 18,
+//         color: isUrgent ? Colors.red : Colors.blue,
+//       ),
+//       const SizedBox(width: 6),
+//       Text(
+//         'Sisa waktu absen: ${attendanceService.formatDuration(attendanceService.remainingTimeMasuk)}',
+//         style: TextStyle(
+//           fontSize: 14,
+//           fontWeight: FontWeight.w600,
+//           color: isUrgent ? Colors.red : Colors.blue,
+//         ),
+//       ),
+//     ],
+//   ),
+// ),
 
 
 
@@ -594,198 +490,19 @@ Container(
                 ),
               ],
             ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 0,
-                      offset: Offset(0, 0),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Stack(
-  children: [
-    Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          ' Status Lokasi',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            const Icon(Icons.my_location, size: 14, color: Colors.white),
-            const SizedBox(width: 4),
-            Text(
-              accuracy != null
-                  ? ' Akurasi ± ${accuracy!.toStringAsFixed(1)} m'
-                  : 'Mengambil lokasi...',
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(width: 8),
-            if (anomalyText != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: anomalyText!.contains("⚠") ? Colors.red : Colors.green,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  anomalyText!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-           Row(
-  children: [
-    // Tombol buka Google Maps
-    Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: (latitude != null && longitude != null) ? _openGoogleMaps : null,
-        icon: const Icon(Icons.location_on, color: Colors.redAccent, size: 24),
-        tooltip: 'Buka Google Maps',
-      ),
-    ),
-
-    const SizedBox(width: 12),
-
-    // Tombol refresh lokasi
-    Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: isFetching ? null : _getLocation,
-        icon: isFetching
-            ? SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: Colors.blue,
-                ),
-              )
-            : const Icon(Icons.refresh, color: Colors.blue, size: 24),
-        tooltip: 'Refresh Lokasi',
-      ),
-    ),
-  ],
-)
-,
-            const SizedBox(width: 10),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: attendanceService.isButtonDisabled
-                    ? null
-                    : () async {
-                        if (!mounted) return;
-
-                        if (!isLocationValid) {
-                          showTopNotification(
-                            context,
-                            success: false,
-                            message: 'Lokasi tidak valid!',
-                          );
-                          return;
-                        }
-
-                        final prefs = await SharedPreferences.getInstance();
-                        final userName = prefs.getString('nama') ?? 'User';
-
-                        final resultMessage =
-                            await attendanceService.handleAbsenWithNotif(userName);
-
-                        if (!mounted) return;
-                        setState(() {});
-
-                        showTopNotification(
-                          context,
-                          success: resultMessage.startsWith('✅'),
-                          message: resultMessage,
-                        );
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: attendanceService.isButtonDisabled
-                      ? Colors.grey.shade300
-                      : Colors.white,
-                  foregroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                ),
-                child: Text(
-                  attendanceService.buttonText.isEmpty
-                      ? 'TIDAK DAPAT MELAKUKAN AKSI'
-                      : attendanceService.buttonText,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-    // Icon matahari di pojok kanan atas
-    Positioned(
-      top: 0,
-      right: 0,
-      child: Icon(
-        Icons.wb_sunny,
-        color: Colors.white,
-        size: 28,
-      ),
-    ),
-  ],
+          LocationStatusCard(
+  latitude: latitude,
+  longitude: longitude,
+  accuracy: accuracy,
+  anomalyText: anomalyText,
+  isFetching: isFetching,
+  isLocationValid: isLocationValid,
+  attendanceService: attendanceService,
+  getLocation: _getLocation,
+  openGoogleMaps: _openGoogleMaps,
+  parentContext: context,
 )
 
-              ),
-            ),
           ],
         ),
       ),
@@ -793,114 +510,4 @@ Container(
   }
 }
 
-
-class Bubble {
-  double x;
-  double y;
-  double size;
-  double speed;
-  double dx;
-  double opacity;
-  Bubble({
-    required this.x,
-    required this.y,
-    required this.size,
-    required this.speed,
-    required this.dx,
-    required this.opacity,
-  });
-}
-
-class BubbleWidget extends StatefulWidget {
-  const BubbleWidget({super.key});
-
-  @override
-  State<BubbleWidget> createState() => _BubbleWidgetState();
-}
-
-class _BubbleWidgetState extends State<BubbleWidget> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  final Random _random = Random();
-  final int bubbleCount = 20;
-  final List<Bubble> bubbles = [];
-
-  @override
-  void initState() {
-    super.initState();
-
-    for (int i = 0; i < bubbleCount; i++) {
-      bubbles.add(_createBubble());
-    }
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1000),
-    )..addListener(_updateBubbles);
-
-    _controller.repeat();
-  }
-
-  Bubble _createBubble() {
-    double size = 15 + _random.nextDouble() * 25; // ukuran 15..40
-    return Bubble(
-      x: _random.nextDouble(),
-      y: 1.0 + _random.nextDouble(), // start di bawah layar
-      size: size,
-      speed: 0.0008 + _random.nextDouble() * 0.0015, // lebih lambat
-      dx: (_random.nextDouble() - 0.5) * 0.003, // pergerakan horizontal kecil
-      opacity: 0.3 + _random.nextDouble() * 0.5, // fading halus
-    );
-  }
-
-  void _updateBubbles() {
-    setState(() {
-      for (var b in bubbles) {
-        b.y -= b.speed;
-        b.x += b.dx;
-
-        // Reset jika keluar layar
-        if (b.y < -0.1 || b.x < -0.1 || b.x > 1.1) {
-          var newB = _createBubble();
-          b.y = newB.y;
-          b.x = newB.x;
-          b.size = newB.size;
-          b.speed = newB.speed;
-          b.dx = newB.dx;
-          b.opacity = newB.opacity;
-        }
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      return Stack(
-        children: bubbles.map((b) {
-          return Positioned(
-            left: b.x * constraints.maxWidth,
-            top: b.y * constraints.maxHeight,
-            child: Opacity(
-              opacity: b.opacity,
-              child: Container(
-                width: b.size,
-                height: b.size,
-                decoration: const BoxDecoration(
-                  color: Colors.blueAccent,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      );
-    });
-  }
-}
 
