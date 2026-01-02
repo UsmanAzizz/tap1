@@ -41,6 +41,8 @@ DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
   DateTime? get masukAkhir => _masukAkhir;
   DateTime? get pulangMulai => _pulangMulai;
   DateTime? get pulangAkhir => _pulangAkhir;
+bool sudahMasukHariIni = false;
+bool sudahPulangHariIni = false;
 
   DateTime _combineWithToday(DateTime time) {
     final now = DateTime.now();
@@ -56,9 +58,25 @@ DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
     return now.isAfter(_masukMulai!) && now.isBefore(_masukAkhir!);
   }
 bool get isButtonDisabled {
-  // Tombol disable jika absenButtonState = NA atau permit = 1
-  return absenButtonState == AbsenButtonState.NA || permit == 1;
+  final now = DateTime.now();
+
+  // libur
+  if (permit == 1) return true;
+
+  // sudah pulang → disable selamanya hari ini
+  if (sudahPulangHariIni) return true;
+
+  // sudah masuk / telat → disable sampai jam pulang
+  if (sudahMasukHariIni) {
+    if (_pulangMulai != null && now.isAfter(_pulangMulai!)) {
+      return false; // buka lagi untuk pulang
+    }
+    return true; // masih kerja
+  }
+
+  return absenButtonState == AbsenButtonState.NA;
 }
+
 
 
 AbsenButtonState get absenButtonState {
@@ -282,44 +300,86 @@ Future<String> handleAbsenWithNotif(String userName) async {
   final telatData = telatSnapshot.data() ?? {};
 
   // ===== MASUK =====
-  if (buttonState == AbsenButtonState.MASUK) {
-    if (attendanceData.containsKey(masukField)) return 'Anda sudah absen masuk';
-
-    await attendanceDocRef.set({masukField: now}, SetOptions(merge: true));
-    await telatDocRef.set({telatField: null}, SetOptions(merge: true)); // hadir tepat waktu
-
-    status = 'Sudah Masuk';
-    return 'Absen masuk berhasil';
+// ===== MASUK =====
+if (buttonState == AbsenButtonState.MASUK) {
+  // ❌ sudah masuk
+  if (attendanceData.containsKey(masukField)) {
+    sudahMasukHariIni = true;
+    return 'Anda sudah absen masuk';
   }
 
-  // ===== PULANG =====
-  if (buttonState == AbsenButtonState.PULANG) {
-    if (attendanceData.containsKey(pulangField)) return 'Anda sudah absen pulang';
+  await attendanceDocRef.set(
+    {masukField: now},
+    SetOptions(merge: true),
+  );
 
-    await attendanceDocRef.set({pulangField: now}, SetOptions(merge: true));
+  // ✅ update state lokal
+  sudahMasukHariIni = true;
+  sudahPulangHariIni = false;
 
-    // jika telat belum ada, set '1'
-    if (!telatData.containsKey(telatField) || telatData[telatField] == null) {
-      await telatDocRef.set({telatField: '1'}, SetOptions(merge: true));
-    }
+  status = 'Sudah Masuk';
+  return 'Absen masuk berhasil';
+}
 
-    status = 'Sudah Pulang';
-    return 'Absen pulang berhasil';
+
+// ===== TELAT =====
+if (buttonState == AbsenButtonState.TELAT) {
+  // ❌ JIKA SUDAH MASUK → TIDAK BOLEH TELAT
+  if (attendanceData.containsKey(masukField)) {
+    sudahMasukHariIni = true;
+    return 'Anda sudah absen masuk';
   }
 
-  // ===== TELAT =====
-  if (buttonState == AbsenButtonState.TELAT) {
-    if (telatData.containsKey(telatField)) return 'Anda sudah absen telat';
-
-    // set absen masuk walau telat
-    await attendanceDocRef.set({masukField: now}, SetOptions(merge: true));
-
-    // set telat = '1'
-    await telatDocRef.set({telatField: '1'}, SetOptions(merge: true));
-
-    status = 'Telat';
-    return 'Absen telat berhasil';
+  // ❌ JIKA SUDAH TELAT
+  if (telatData.containsKey(telatField)) {
+    sudahMasukHariIni = true;
+    return 'Anda sudah absen telat';
   }
+
+  // ✅ telat = tetap dianggap masuk
+  await attendanceDocRef.set(
+    {masukField: now},
+    SetOptions(merge: true),
+  );
+
+  await telatDocRef.set(
+    {telatField: '1'},
+    SetOptions(merge: true),
+  );
+
+  // ✅ update state lokal
+  sudahMasukHariIni = true;
+  sudahPulangHariIni = false;
+
+  status = 'Telat';
+  return 'Absen telat berhasil';
+}
+
+
+// ===== PULANG =====
+if (buttonState == AbsenButtonState.PULANG) {
+  // ❌ sudah pulang
+  if (attendanceData.containsKey(pulangField)) {
+    sudahPulangHariIni = true;
+    return 'Anda sudah absen pulang';
+  }
+
+  await attendanceDocRef.set(
+    {pulangField: now},
+    SetOptions(merge: true),
+  );
+
+  // ⚠️ JANGAN tulis telat di sini
+  // telat HANYA ditulis saat TELAT
+
+  // ✅ update state lokal
+  sudahPulangHariIni = true;
+
+  status = 'Sudah Pulang';
+  return 'Absen pulang berhasil';
+}
+
+
 
   return '⚠ Terjadi kesalahan';
 }

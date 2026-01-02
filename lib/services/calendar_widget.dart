@@ -196,31 +196,13 @@ Future<void> loadAttendanceFromFirebase(String name) async {
   }
 
   /// Hitung jumlah libur pending + approved bulan ini
-  int hitungLiburBulanIni() {
-    int total = 0;
-    liburEvents.forEach((date, value) {
-      if (date.year == focusedDay.year &&
-          date.month == focusedDay.month &&
-          (value == '0' || value == '1')) {
-        total++;
-      }
-    });
-    return total;
-  }
+
 
   /// Ajukan libur
   Future<void> ajukanLibur(DateTime day) async {
     if (localName == null || localName!.isEmpty) return;
 
-    if (hitungLiburBulanIni() >= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Maksimal 2 kali libur dalam 1 bulan'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  
 
     final year = day.year.toString();
     final month = day.month.toString();
@@ -277,26 +259,23 @@ Widget _buildDayCell(DateTime day) {
       .toList();
 
   final telatForDay = telatEvents[dayKey];       // '1' jika telat
-final liburForDay = _getLiburForDay(day);      // '0' = pending, '1' = approved
+  final liburForDay = _getLiburForDay(day);      // '0' = pending, '1' = approved
 
-bool isTelat = telatForDay != null && telatForDay.toString() == '1';
-bool isLiburApproved = liburForDay.contains('1');
-bool isLiburPending = liburForDay.contains('0');
+  bool isTelat = telatForDay != null && telatForDay.toString() == '1';
+  bool isLiburApproved = liburForDay.contains('1');
+  bool isLiburPending = liburForDay.contains('0');
 
-// Cek hadir masuk & pulang dari attendanceMap
-final attendanceForDay = attendanceMap[dayKey];
-bool hasMasuk = attendanceForDay != null && attendanceForDay['masuk'] != null;
-bool hasPulang = attendanceForDay != null && attendanceForDay['pulang'] != null;
+  // Cek hadir masuk & pulang dari attendanceMap
+  final attendanceForDay = attendanceMap[dayKey];
+  bool hasMasuk = attendanceForDay != null && attendanceForDay['masuk'] != null;
+  bool hasPulang = attendanceForDay != null && attendanceForDay['pulang'] != null;
 
-// Cek tidak ada absen sama sekali (tanggal sebelum ini)
-bool belumAbsen = !isTelat && !hasMasuk && !hasPulang && day.isBefore(DateTime.now());
+  // Cek tidak ada absen sama sekali (tanggal sebelum ini)
+  bool belumAbsen = !isTelat && !hasMasuk && !hasPulang && day.isBefore(DateTime.now());
 
   firebaseEvents.forEach((key, value) {
     if (key.year == day.year && key.month == day.month && key.day == day.day) {
-      // Cek apakah value untuk pulang != null
-      if (value != null) {
-        hasPulang = true;
-      }
+      if (value != null) hasPulang = true;
     }
   });
 
@@ -305,53 +284,71 @@ bool belumAbsen = !isTelat && !hasMasuk && !hasPulang && day.isBefore(DateTime.n
   bool showInnerWhite = false;
 
   if (day.isBefore(today)) {
-    if (isTelat) {
-      bgColor = Colors.red;
-      textColor = Colors.white;
-      if (hasPulang) {
-        showInnerWhite = true;
-        textColor = Colors.red;
-      }
-    } else if (isLiburApproved) {
+    if (isLiburApproved) {
       bgColor = Colors.deepPurpleAccent;
       textColor = Colors.white;
     } else if (isLiburPending) {
       bgColor = Colors.yellow.shade700;
-      textColor = Colors.white;
-    } else if (hasMasuk && hasPulang) {
-      // hadir lengkap → hijau
-      bgColor = Colors.green;
-      textColor = Colors.white;
-    } else if (hasMasuk && !hasPulang) {
-      // hanya absen masuk → biru
-      bgColor = Colors.blue;
       textColor = Colors.white;
     } else {
-      // tanggal lewat tapi tidak hadir sama sekali → merah
-      bgColor = Colors.red;
-      textColor = Colors.white;
-    }
-  } else {
-    // hari ini / mendatang
-    if (isTelat) {
-      bgColor = Colors.red;
-      textColor = Colors.white;
-      if (hasPulang) {
+      // ===========================
+      // LOGIKA BARU ATTENDANCE
+      // ===========================
+      if (hasMasuk && !isTelat && !hasPulang) {
+        // Masuk saja
+        bgColor = Colors.blue;
+        textColor = Colors.white;
+      } else if (hasMasuk && isTelat && !hasPulang) {
+        // Masuk telat saja
+        bgColor = Colors.red;
         showInnerWhite = true;
         textColor = Colors.red;
+      } else if (!hasMasuk && !isTelat && hasPulang) {
+        // Pulang saja
+        bgColor = Colors.blue;
+        showInnerWhite = true;
+        textColor = Colors.blue;
+      } else if (hasMasuk && !isTelat && hasPulang) {
+        // Masuk & pulang
+        bgColor = Colors.green;
+        textColor = Colors.white;
+      } else if (hasMasuk && isTelat && hasPulang) {
+        // Masuk telat & pulang
+        bgColor = Colors.green;
+        showInnerWhite = true;
+        textColor = Colors.green;
+      } else {
+        // Tidak hadir sama sekali → tetap merah
+        bgColor = Colors.red;
+        textColor = Colors.white;
       }
-    } else if (isLiburApproved) {
+    }
+  } else {
+    // Hari ini / mendatang tetap mengikuti status
+    if (isLiburApproved) {
       bgColor = Colors.deepPurpleAccent;
       textColor = Colors.white;
     } else if (isLiburPending) {
       bgColor = Colors.yellow.shade700;
       textColor = Colors.white;
-    } else if (hasMasuk && !hasPulang) {
+    } else if (hasMasuk && !isTelat && !hasPulang) {
       bgColor = Colors.blue;
       textColor = Colors.white;
-    } else if (hasMasuk && hasPulang) {
+    } else if (!hasMasuk && !isTelat && hasPulang) {
+      bgColor = Colors.blue;
+      showInnerWhite = true;
+      textColor = Colors.blue;
+    }else if (!hasMasuk && isTelat && !hasPulang) {
+      bgColor = Colors.red;
+      showInnerWhite = true;
+      textColor = Colors.red;
+    }  else if (hasMasuk && !isTelat && hasPulang) {
       bgColor = Colors.green;
       textColor = Colors.white;
+    } else if (hasMasuk && isTelat && hasPulang) {
+      bgColor = Colors.green;
+      showInnerWhite = true;
+      textColor = Colors.green;
     } else {
       bgColor = null;
       textColor = Colors.black;
@@ -395,99 +392,212 @@ bool belumAbsen = !isTelat && !hasMasuk && !hasPulang && day.isBefore(DateTime.n
 }
 
 
-  void _showAttendanceDialog(DateTime day) {
-    final liburForDay = _getLiburForDay(day);
-    final statusText = liburForDay.isEmpty
-        ? 'Belum ada data'
-        : liburForDay.first == '1'
-            ? 'Libur Disetujui'
-            : 'Libur diajukan';
+void _showAttendanceDialog(DateTime day) {
+  final attendanceForDay = attendanceMap[onlyDate(day)];
+  final masuk = attendanceForDay?['masuk'];
+  final pulang = attendanceForDay?['pulang'];
+  final telatForDay = telatEvents[onlyDate(day)] == '1';
+  final liburForDay = _getLiburForDay(day);
+  final isLiburApproved = liburForDay.contains('1');
+  final isLiburPending = liburForDay.contains('0');
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: "AttendanceDialog",
-      barrierColor: Colors.black.withOpacity(0.3),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return Center(
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.8,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${day.day}-${day.month}-${day.year}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+  final canApplyLibur =
+      !isLiburApproved && !isLiburPending && masuk == null && pulang == null && !telatForDay;
+
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: "AttendanceDialog",
+    barrierColor: Colors.black.withOpacity(0.3),
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.65,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Bulan & Tahun
+                Text(
+                  '${day.month} ${day.year}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Tanggal besar
+                Text(
+                  '${day.day}',
+                  style: const TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+                const SizedBox(height: 0),
+
+                // Status bar: masuk, pulang, telat, libur
+              if (masuk != null)
+  _infoBar(
+    icon: Icons.login,
+    label: 'Anda masuk jam ${TimeOfDay.fromDateTime(masuk).format(context)}',
+    color: Colors.blue,
+  ),
+if (telatForDay)
+  _infoBar(
+    icon: Icons.access_time,
+    label: 'Anda telat${masuk != null ? ": ${TimeOfDay.fromDateTime(masuk).format(context)}" : ""}',
+    color: Colors.orange,
+  ),
+if (pulang != null)
+  _infoBar(
+    icon: Icons.logout,
+    label: 'Anda pulang jam ${TimeOfDay.fromDateTime(pulang).format(context)}',
+    color: Colors.green,
+  ),
+
+                if (isLiburApproved)
+                  _infoBar(
+                    icon: Icons.coffee,
+                    label: 'Libur Disetujui',
+                   
+                    color: Colors.purple,
+                  ),
+                const SizedBox(height: 16),
+
+                // Tombol Ajukan / Batalkan Libur
+                if (canApplyLibur)
+               ElevatedButton(
+  onPressed: () {
+    // Tutup dialog dulu
+    Navigator.of(context, rootNavigator: true).pop();
+
+    // Jalankan ajukan libur async setelah dialog ditutup
+    Future.microtask(() => ajukanLibur(day));
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.blue.shade600,
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(32),
+    ),
+    elevation: 2,
+  ),
+  child: const Text(
+    'Ajukan Libur',
+    style: TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    ),
+  ),
+)
+
+                else if (isLiburPending)
+                  ElevatedButton(
+                    onPressed: () async {
+                        // Tutup dialog setelah berhasil
+    Navigator.of(context, rootNavigator: true).pop();
+    await _batalkanPengajuan(day);
+  
+  },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red),
+                    child: const Text(
+                      'Batalkan Pengajuan',
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text('$statusText'),
-                  const SizedBox(height: 12),
-                  if (liburForDay.isEmpty && hitungLiburBulanIni() < 2)
-                    ElevatedButton(
-                      onPressed: () async {
-                        await ajukanLibur(day);
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Ajukan Libur'),
-                    ),
-                  if (liburForDay.contains('0'))
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        backgroundColor: Colors.orange.shade100,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () async {
-                        await _batalkanPengajuan(day);
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        'Batalkan Pengajuan',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.orange.shade800,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Tutup'),
-                  ),
-                ],
-              ),
+
+                const SizedBox(height: 12),
+                // Tombol tutup
+              TextButton(
+  onPressed: () => Navigator.pop(context),
+  style: TextButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    backgroundColor: Colors.red.shade600.withOpacity(0.1),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(32),
+    ),
+  ),
+  child: const Text(
+    'Tutup',
+    style: TextStyle(
+      color: Colors.red,
+      fontWeight: FontWeight.bold,
+      fontSize: 16,
+    ),
+  ),
+)
+
+              ],
             ),
           ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutBack,
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return ScaleTransition(
+        scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+        child: FadeTransition(opacity: animation, child: child),
+      );
+    },
+  );
+}
+
+
+Widget _infoBar({
+  required IconData icon,
+  required String label,
+  Color? color,
+}) {
+  return Container(
+    width: double.infinity,
+    margin: const EdgeInsets.symmetric(vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: color?.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center, // <-- tengah
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: color,
           ),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      },
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
+
+
 
   Future<void> _batalkanPengajuan(DateTime day) async {
     if (localName == null || localName!.isEmpty) return;
@@ -583,60 +693,89 @@ bool belumAbsen = !isTelat && !hasMasuk && !hasPulang && day.isBefore(DateTime.n
             opacity: 1,
             duration: const Duration(milliseconds: 500),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.shade300,
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  )
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (pendingText != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 0),
-                            child: Text(
-                              '$pendingText $pendingTanggal',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          ),
-                        if (approvedText != null)
-                          Text(
-                            '$approvedText $approvedTanggal',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.green,
-                            ),
-                          ),
-                        Text(
-                          'Sisa kuota libur : ${2 - hitungLiburBulanIni()}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
+  width: double.infinity, // pastikan Row lebar penuh
+  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisAlignment: MainAxisAlignment.start,
+    children: [
+    Expanded(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Info libur pending
+      if (pendingText != null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.hourglass_top, size: 18, color: Colors.orange),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$pendingText $pendingTanggal',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
+          ),
+        ),
+
+      // Info libur approved
+      if (approvedText != null)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, size: 18, color: Colors.green),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$approvedText $approvedTanggal',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+      // Sisa kuota libur
+   
+
+      const SizedBox(height: 8),
+
+      // Tombol Ajukan / Batalkan Libur
+   
+    ],
+  ),
+)
+
+    ],
+  ),
+)
+
           ),
       ],
     );

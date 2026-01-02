@@ -80,7 +80,7 @@ class LocationStatusCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: anomalyText!.contains("⚠") ? Colors.red : Colors.green,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           anomalyText!,
@@ -170,11 +170,12 @@ class LocationStatusCard extends StatelessWidget {
                                 final resultMessage =
                                     await attendanceService.handleAbsenWithNotif(userName);
 
-                                showTopNotification(
-                                  parentContext,
-                                  success: resultMessage.startsWith('✅'),
-                                  message: resultMessage,
-                                );
+                               showTopNotification(
+                                parentContext,
+                                success: resultMessage.contains('berhasil'), // jika string mengandung "berhasil" → hijau
+                                message: resultMessage,
+                              );
+
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: attendanceService.isButtonDisabled
@@ -183,13 +184,13 @@ class LocationStatusCard extends StatelessWidget {
                           foregroundColor: Colors.blue,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(90),
                           ),
                           elevation: 4,
                         ),
                         child: Text(
                           attendanceService.buttonText.isEmpty
-                              ? 'TIDAK DAPAT MELAKUKAN AKSI'
+                              ? 'Santai dulu ngga sih'
                               : attendanceService.buttonText,
                           style: const TextStyle(
                             fontSize: 14,

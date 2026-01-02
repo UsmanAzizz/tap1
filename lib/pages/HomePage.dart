@@ -388,7 +388,7 @@ flexibleSpace: Builder(
   builder: (context) {
     return HeaderWithSymbols(
       name: localName,
-      onDrawerTap: () => Scaffold.of(context).openDrawer(),
+      onDrawerTap: () => Scaffold.of(context).openDrawer(), docName: '',
     );
   },
 ),
