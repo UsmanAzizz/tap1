@@ -230,6 +230,7 @@ Future<void> loadLiburFromFirestore() async {
     liburMap.clear();
   }
 }
+
 Future<void> loadPermitFromFirestore(String userName) async {
   try {
     final now = DateTime.now();

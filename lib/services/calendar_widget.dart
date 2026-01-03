@@ -15,25 +15,74 @@ class _AttendanceCalendarState extends State<AttendanceCalendar> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime focusedDay = DateTime.now();
   DateTime? selectedDay;
-Map<DateTime, Map<String, DateTime?>> attendanceMap = {};
-
+  Map<DateTime, Map<String, DateTime?>> attendanceMap = {};
+  
   /// Absen biasa: 1 = hadir, 0 = belum hadir
 
 
   /// Hanya untuk libur / pengajuan libur: 0 = pending, 1 = approved
   Map<DateTime, String> liburEvents = {};
   Map<DateTime, String> telatEvents = {};
+  Map<DateTime, String> swapEvents = {};
 
   String? localName;
 
   @override
-  void initState() {
-    super.initState();
-    _loadLocalNameAndData();
-  }
+void initState() {
+  super.initState();
+  _initData();
+}
+
+Future<void> _initData() async {
+  await _loadLocalNameAndData(); // pastikan localName sudah ada
+
+  if (localName == null) return;
+
+  await fetchSwapEvents(
+    user: localName!, // aman karena sudah dicek
+    year: focusedDay.year,
+    month: focusedDay.month,
+  );
+
+  setState(() {});
+}
+
 
   // Helper untuk hanya tanggal tanpa jam
-  DateTime onlyDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+DateTime onlyDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+Future<void> _cancelSwapShift(
+  BuildContext context,
+  String user,
+  DateTime day,
+) async {
+  try {
+    final year = day.year.toString();
+    final month = day.month.toString(); // 1 digit jika < 10
+    final dateKey = day.day.toString(); // FIELD = tanggal
+
+    final docRef = FirebaseFirestore.instance
+        .collection('swap')
+        .doc(year)
+        .collection(month)
+        .doc(user);
+
+    await docRef.update({
+      dateKey: FieldValue.delete(),
+    });
+
+    // hapus dari local map agar UI langsung update
+    swapEvents.remove(DateTime(day.year, day.month, day.day));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tukar shift berhasil dibatalkan')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal membatalkan tukar shift: $e')),
+    );
+  }
+}
 
   /// Load data telat
 Future<void> loadTelatFromFirebase(String name, {DateTime? forMonth}) async {
@@ -80,6 +129,92 @@ Future<void> loadTelatFromFirebase(String name, {DateTime? forMonth}) async {
 
   } catch (e) {
     debugPrint('Gagal load data telat: $e');
+  }
+}
+
+Future<void> showSwapFieldDialog(
+    BuildContext context, String user, DateTime day) async {
+  final currentContext = context;
+
+  try {
+    // Ambil dokumen "List" dari collection swap
+    final docSnapshot =
+        await FirebaseFirestore.instance.collection('swap').doc('List').get();
+
+    if (!docSnapshot.exists) {
+      ScaffoldMessenger.of(currentContext).showSnackBar(
+        const SnackBar(content: Text('Dokumen "List" tidak ditemukan')),
+      );
+      return;
+    }
+
+    // Ambil nama-nama field dari dokumen (misal shift 1, 2, 3)
+    final fieldNames = docSnapshot.data()!.keys.toList();
+
+    // Tampilkan dialog
+    showDialog(
+      context: currentContext,
+      builder: (context) => AlertDialog(
+        title: const Text('Pilih shift untuk swap'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: fieldNames.length,
+            itemBuilder: (context, index) {
+              final shiftSelected = fieldNames[index];
+              return ListTile(
+                leading: const Icon(Icons.label),
+                title: Text(shiftSelected),
+                onTap: () async {
+                  try {
+                    // Nama field = tanggal
+                    final fieldKey = day.day.toString();
+
+                    // Value = shift yang dipilih + "_0"
+                    final fieldValue = "${shiftSelected}_0";
+
+                    // Path Firestore: swap/(tahun)/(bulan 2 digit)/(user)
+                    final docRef = FirebaseFirestore.instance
+                        .collection('swap')
+                        .doc(day.year.toString())
+                        .collection(day.month.toString())
+                        .doc(user);
+
+                    // Set field
+                    await docRef.set({fieldKey: fieldValue}, SetOptions(merge: true));
+
+                    ScaffoldMessenger.of(currentContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Tanggal ${fieldKey} berhasil disimpan sebagai "$fieldValue" untuk $user'),
+                      ),
+                    );
+
+                    // Tutup dialog
+                    Navigator.pop(context);
+                  } catch (e) {
+                    ScaffoldMessenger.of(currentContext).showSnackBar(
+                      SnackBar(content: Text('Gagal menyimpan field: $e')),
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(currentContext).showSnackBar(
+      SnackBar(content: Text('Gagal fetch dokumen: $e')),
+    );
   }
 }
 
@@ -241,6 +376,90 @@ Future<void> loadAttendanceFromFirebase(String name) async {
       );
     }
   }
+Widget _buildShiftIcon(String swapValue) {
+  final parts = swapValue.split('_');
+  final shift = parts.isNotEmpty ? parts[0] : '?';
+  final status = parts.length > 1 ? parts[1] : '0';
+
+  final isApproved = status == '1';
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 5),
+    height: 20,
+    decoration: BoxDecoration(
+      color: isApproved ? Colors.blue : Colors.grey,
+      borderRadius: BorderRadius.circular(12),
+      border: isApproved
+          ? Border.all(color: Colors.white, width: 1.5)
+          : null,
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 🔢 ANGKA SHIFT (DIPASTIKAN MUNCUL)
+      
+
+   
+
+        // 🔀 IKON SHUFFLE
+        const Icon(
+          Icons.swap_horiz,
+          size: 11,
+          color: Colors.white,
+        ),     const SizedBox(width: 3),
+          Text(
+          shift,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11, // ⬅ diperbesar
+            fontWeight: FontWeight.bold,
+            height: 1,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+Future<void> fetchSwapEvents({
+  required String user,
+  required int year,
+  required int month,
+}) async {
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('swap')
+        .doc(year.toString())
+        .collection(month.toString()) // ⬅ bulan 1 digit jika < 10
+        .doc(user)
+        .get();
+
+    if (!snapshot.exists) {
+      swapEvents.clear();
+      return;
+    }
+
+    final data = snapshot.data() ?? {};
+
+    swapEvents.clear();
+
+    data.forEach((key, value) {
+      // key = tanggal (contoh "30")
+      // value = "3_0" / "3_1"
+      final day = int.tryParse(key);
+      if (day == null) return;
+
+      final date = DateTime(year, month, day);
+      swapEvents[date] = value.toString();
+    });
+
+    debugPrint('SWAP EVENTS: $swapEvents');
+  } catch (e) {
+    debugPrint('Gagal fetch swap: $e');
+    swapEvents.clear();
+  }
+}
+
 
   List<String> _getLiburForDay(DateTime day) {
     final key = onlyDate(day);
@@ -251,6 +470,23 @@ Future<void> loadAttendanceFromFirebase(String name) async {
 Widget _buildDayCell(DateTime day) {
   final dayKey = onlyDate(day);
   final today = onlyDate(DateTime.now());
+  final dateKey = DateTime(day.year, day.month, day.day);
+
+// Ambil swap untuk hari ini
+final swapValue = swapEvents[onlyDate(day)];  // HARUS begini
+ // pastikan pakai onlyDate(day)
+final hasSwapShift = swapValue != null;
+
+String swapStatusLocal = '';
+String swapShiftNumberLocal = '';
+
+if (hasSwapShift) {
+  final parts = swapValue!.split('_'); // misal "3_0" atau "3_1"
+  swapShiftNumberLocal = parts[0];     // nomor shift
+  swapStatusLocal = parts[1];          // status swap
+}
+debugPrint('swapEvents untuk ${onlyDate(day)} = ${swapEvents[onlyDate(day)]}');
+
 
   // Ambil semua absen untuk hari ini
   final allAttendanceKeys = firebaseEvents.entries
@@ -355,40 +591,57 @@ Widget _buildDayCell(DateTime day) {
     }
   }
 
-  return Container(
-    margin: const EdgeInsets.all(4),
-    alignment: Alignment.center,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        if (bgColor != null)
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: bgColor,
-              shape: BoxShape.circle,
+ return SizedBox(
+  width: 46,
+  height: 46,
+  child: Stack(
+    clipBehavior: Clip.none, // ⬅ PENTING: biar boleh keluar
+    children: [
+      // === TANGGAL (TETAP DI TENGAH) ===
+      Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (bgColor != null)
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            if (showInnerWhite)
+              Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        if (showInnerWhite)
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-          ),
-        Text(
-          '${day.day}',
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.bold,
-          ),
+          ],
         ),
-      ],
-    ),
-  );
+      ),
+
+      // === IKON SHIFT (BENAR-BENAR DI LUAR) ===
+      if (swapValue != null)
+        Positioned(
+          bottom: -5,
+          right: 6.5,
+          child: _buildShiftIcon(swapValue),
+        ),
+    ],
+  ),
+);
+
 }
 
 
@@ -401,8 +654,35 @@ void _showAttendanceDialog(DateTime day) {
   final isLiburApproved = liburForDay.contains('1');
   final isLiburPending = liburForDay.contains('0');
 
-  final canApplyLibur =
-      !isLiburApproved && !isLiburPending && masuk == null && pulang == null && !telatForDay;
+// Ambil data swap untuk hari ini
+final swapValue = swapEvents[onlyDate(day)];
+final hasSwapShift = swapValue != null;
+
+String swapStatusLocal = '';
+String swapShiftNumberLocal = '';
+
+if (hasSwapShift) {
+  final parts = swapValue!.split('_'); // ['3','0'] atau ['3','1']
+  swapShiftNumberLocal = parts[0];     // nomor shift
+  swapStatusLocal = parts[1];          // status swap: '0' = pending, '1' = approved
+}
+
+  // Tombol Ajukan Libur
+  final canApplyLibur = 
+      !isLiburApproved && 
+      !isLiburPending && 
+       !hasSwapShift &&        
+      masuk == null && 
+      pulang == null && 
+      !telatForDay;
+
+  // Tombol Tukar Shift
+  final canSwapShift = 
+      masuk == null &&
+      pulang == null &&
+      !telatForDay &&
+      !isLiburApproved &&
+      !isLiburPending;
 
   showGeneralDialog(
     context: context,
@@ -452,102 +732,179 @@ void _showAttendanceDialog(DateTime day) {
                     color: Colors.blueAccent,
                   ),
                 ),
-                const SizedBox(height: 0),
+                const SizedBox(height: 8),
 
                 // Status bar: masuk, pulang, telat, libur
-              if (masuk != null)
-  _infoBar(
-    icon: Icons.login,
-    label: 'Anda masuk jam ${TimeOfDay.fromDateTime(masuk).format(context)}',
-    color: Colors.blue,
-  ),
-if (telatForDay)
-  _infoBar(
-    icon: Icons.access_time,
-    label: 'Anda telat${masuk != null ? ": ${TimeOfDay.fromDateTime(masuk).format(context)}" : ""}',
-    color: Colors.orange,
-  ),
-if (pulang != null)
-  _infoBar(
-    icon: Icons.logout,
-    label: 'Anda pulang jam ${TimeOfDay.fromDateTime(pulang).format(context)}',
-    color: Colors.green,
-  ),
-
+                if (masuk != null && !telatForDay)
+                  _infoBar(
+                    icon: Icons.login,
+                    label: 'Anda masuk jam ${TimeOfDay.fromDateTime(masuk).format(context)}',
+                    color: Colors.blue,
+                  ),
+                if (telatForDay)
+                  _infoBar(
+                    icon: Icons.access_time,
+                    label: masuk != null
+                        ? 'Telat masuk jam ${TimeOfDay.fromDateTime(masuk).format(context)}'
+                        : 'Anda telat',
+                    color: Colors.orange,
+                  ),
+                if (pulang != null)
+                  _infoBar(
+                    icon: Icons.logout,
+                    label: 'Anda pulang jam ${TimeOfDay.fromDateTime(pulang).format(context)}',
+                    color: Colors.green,
+                  ),
                 if (isLiburApproved)
                   _infoBar(
                     icon: Icons.coffee,
                     label: 'Libur Disetujui',
-                   
                     color: Colors.purple,
                   ),
+
                 const SizedBox(height: 16),
 
                 // Tombol Ajukan / Batalkan Libur
                 if (canApplyLibur)
-               ElevatedButton(
-  onPressed: () {
-    // Tutup dialog dulu
-    Navigator.of(context, rootNavigator: true).pop();
-
-    // Jalankan ajukan libur async setelah dialog ditutup
-    Future.microtask(() => ajukanLibur(day));
-  },
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.blue.shade600,
-    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(32),
-    ),
-    elevation: 2,
-  ),
-  child: const Text(
-    'Ajukan Libur',
-    style: TextStyle(
-      color: Colors.white,
-      fontWeight: FontWeight.bold,
-      fontSize: 14,
-    ),
-  ),
-)
-
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context, rootNavigator: true).pop();
+                      Future.microtask(() => ajukanLibur(day));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: const Text(
+                      'Ajukan Libur',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
                 else if (isLiburPending)
                   ElevatedButton(
                     onPressed: () async {
-                        // Tutup dialog setelah berhasil
-    Navigator.of(context, rootNavigator: true).pop();
-    await _batalkanPengajuan(day);
-  
-  },
+                      Navigator.of(context, rootNavigator: true).pop();
+                      await _batalkanPengajuan(day);
+                    },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red),
+                      backgroundColor: Colors.red,
+                    ),
                     child: const Text(
-                      'Batalkan Pengajuan',
+                      'Batalkan pengajuan Libur',
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
 
-                const SizedBox(height: 12),
-                // Tombol tutup
-              TextButton(
-  onPressed: () => Navigator.pop(context),
-  style: TextButton.styleFrom(
-    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-    backgroundColor: Colors.red.shade600.withOpacity(0.1),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(32),
-    ),
-  ),
-  child: const Text(
-    'Tutup',
-    style: TextStyle(
-      color: Colors.red,
-      fontWeight: FontWeight.bold,
-      fontSize: 16,
-    ),
-  ),
-)
+                const SizedBox(height: 8),
 
+if (hasSwapShift && swapStatusLocal == '0')
+  ElevatedButton(
+    onPressed: () async {
+      if (localName != null) {
+        await _cancelSwapShift(context, localName!, day);
+        await fetchSwapEvents(
+          user: localName!,
+          year: day.year,
+          month: day.month,
+        );
+        setState(() {});
+      }
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.red.shade600,
+    ),
+    child: const Text(
+      'Batalkan Tukar Shift',
+      style: TextStyle(color: Colors.white),
+    ),
+  )
+else if (hasSwapShift && swapStatusLocal == '1')
+  ElevatedButton.icon(
+  onPressed: () {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Shift sudah ditukar ke $swapShiftNumberLocal'),
+      ),
+    );
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.grey.shade300,   // bg abu-abu muda
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // tipis vertikal
+    elevation: 0, // tanpa shadow
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20), // rounded tipis
+    ),
+  ),
+  icon: const Icon(
+    Icons.swap_horiz, 
+    size: 16,       // icon kecil
+    color: Colors.grey, 
+  ),
+  label: Text(
+    'Ditukar ke shift $swapShiftNumberLocal',
+    style: const TextStyle(
+      color: Colors.black54, 
+      fontSize: 13,    // lebih kecil
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+),// Tombol untuk swap shift baru
+if (!hasSwapShift && canSwapShift)
+  ElevatedButton(
+    onPressed: () {
+      if (localName != null) {
+        showSwapFieldDialog(context, localName!, day);
+      }
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.blue.shade600,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(32),
+      ),
+      elevation: 2,
+    ),
+    child: const Text(
+      'Tukar Shift',
+      style: TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+        fontSize: 14,
+      ),
+    ),
+  ),
+
+
+
+                const SizedBox(height: 12),
+
+                // Tombol Tutup
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    backgroundColor: Colors.red.shade600.withOpacity(0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                  ),
+                  child: const Text(
+                    'Tutup',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                )
               ],
             ),
           ),
@@ -562,6 +919,7 @@ if (pulang != null)
     },
   );
 }
+
 
 
 Widget _infoBar({

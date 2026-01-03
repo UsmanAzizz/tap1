@@ -139,52 +139,43 @@ class _AppDrawerState extends State<AppDrawer> {
                     itemBuilder: (context, index) {
                       final user = ranking[index];
 
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor:
-                                  _rankColor(index).withOpacity(0.18),
-                              child: Icon(
-                                _rankIcon(index),
-                                size: index < 3 ? 20 : 8,
-                                color: _rankColor(index),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                user['name'],
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '#${index + 1}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                     return ListTile(
+  dense: true,
+  visualDensity: const VisualDensity(
+    vertical: -3, // makin kecil makin rapat
+  ),
+  minLeadingWidth: 0,
+
+  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+
+  leading: CircleAvatar(
+    radius: 16,
+    backgroundColor: _rankColor(index).withOpacity(0.15),
+    child: Icon(
+      _rankIcon(index),
+      size: index < 3 ? 18 : 7,
+      color: _rankColor(index),
+    ),
+  ),
+
+  title: Text(
+    user['name'],
+    style: const TextStyle(
+      fontSize: 14.5,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+
+  trailing: Text(
+    '#${index + 1}',
+    style: TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.bold,
+      color: Colors.grey.shade600,
+    ),
+  ),
+);
+
                     },
                   ),
           ),
