@@ -16,10 +16,10 @@ class _AttendanceCalendarState extends State<AttendanceCalendar> {
   DateTime focusedDay = DateTime.now();
   DateTime? selectedDay;
   Map<DateTime, Map<String, DateTime?>> attendanceMap = {};
-  
+    late BuildContext parentContext;
   /// Absen biasa: 1 = hadir, 0 = belum hadir
 
-
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); 
   /// Hanya untuk libur / pengajuan libur: 0 = pending, 1 = approved
   Map<DateTime, String> liburEvents = {};
   Map<DateTime, String> telatEvents = {};
@@ -31,6 +31,7 @@ class _AttendanceCalendarState extends State<AttendanceCalendar> {
 void initState() {
   super.initState();
   _initData();
+    parentContext = context;
 }
 
 Future<void> _initData() async {
@@ -51,15 +52,11 @@ Future<void> _initData() async {
   // Helper untuk hanya tanggal tanpa jam
 DateTime onlyDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
-Future<void> _cancelSwapShift(
-  BuildContext context,
-  String user,
-  DateTime day,
-) async {
+Future<void> _cancelSwapShift(String user, DateTime day) async {
   try {
     final year = day.year.toString();
-    final month = day.month.toString(); // 1 digit jika < 10
-    final dateKey = day.day.toString(); // FIELD = tanggal
+    final month = day.month.toString();
+    final dateKey = day.day.toString();
 
     final docRef = FirebaseFirestore.instance
         .collection('swap')
@@ -67,22 +64,16 @@ Future<void> _cancelSwapShift(
         .collection(month)
         .doc(user);
 
-    await docRef.update({
-      dateKey: FieldValue.delete(),
-    });
+    await docRef.update({dateKey: FieldValue.delete()});
 
-    // hapus dari local map agar UI langsung update
+    // update local map
     swapEvents.remove(DateTime(day.year, day.month, day.day));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tukar shift berhasil dibatalkan')),
-    );
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Gagal membatalkan tukar shift: $e')),
-    );
+    debugPrint('Gagal membatalkan tukar shift: $e');
   }
 }
+
+
 
   /// Load data telat
 Future<void> loadTelatFromFirebase(String name, {DateTime? forMonth}) async {
@@ -166,39 +157,47 @@ Future<void> showSwapFieldDialog(
               return ListTile(
                 leading: const Icon(Icons.label),
                 title: Text(shiftSelected),
-                onTap: () async {
-                  try {
-                    // Nama field = tanggal
-                    final fieldKey = day.day.toString();
+              onTap: () async {
+  try {
+    // Nama field = tanggal
+    final fieldKey = day.day.toString();
 
-                    // Value = shift yang dipilih + "_0"
-                    final fieldValue = "${shiftSelected}_0";
+    // Value = shift yang dipilih + "_0"
+    final fieldValue = "${shiftSelected}_0";
 
-                    // Path Firestore: swap/(tahun)/(bulan 2 digit)/(user)
-                    final docRef = FirebaseFirestore.instance
-                        .collection('swap')
-                        .doc(day.year.toString())
-                        .collection(day.month.toString())
-                        .doc(user);
+    // Path Firestore: swap/(tahun)/(bulan 2 digit)/(user)
+    final docRef = FirebaseFirestore.instance
+        .collection('swap')
+        .doc(day.year.toString())
+        .collection(day.month.toString())
+        .doc(user);
 
-                    // Set field
-                    await docRef.set({fieldKey: fieldValue}, SetOptions(merge: true));
+    // Set field
+    await docRef.set({fieldKey: fieldValue}, SetOptions(merge: true));
 
-                    ScaffoldMessenger.of(currentContext).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Tanggal ${fieldKey} berhasil disimpan sebagai "$fieldValue" untuk $user'),
-                      ),
-                    );
+    // Pakai showTopNotification, aman walau context berasal dari dialog
+    if (mounted) {
+      showTopNotification(
+        context, // pakai context dari widget yang masih mounted
+        success: true,
+        message:
+            'Berhasil tukar ke shift $shiftSelected untuk tanggal $fieldKey',
+      );
+    }
 
-                    // Tutup dialog
-                    Navigator.pop(context);
-                  } catch (e) {
-                    ScaffoldMessenger.of(currentContext).showSnackBar(
-                      SnackBar(content: Text('Gagal menyimpan field: $e')),
-                    );
-                  }
-                },
+    // Tutup dialog
+    Navigator.pop(context);
+  } catch (e) {
+    if (mounted) {
+      showTopNotification(
+        context,
+        success: false,
+        message: 'Gagal menyimpan shift: $e',
+      );
+    }
+  }
+},
+
               );
             },
           ),
@@ -807,25 +806,37 @@ if (hasSwapShift) {
 
 if (hasSwapShift && swapStatusLocal == '0')
   ElevatedButton(
-    onPressed: () async {
-      if (localName != null) {
-        await _cancelSwapShift(context, localName!, day);
-        await fetchSwapEvents(
-          user: localName!,
-          year: day.year,
-          month: day.month,
+  onPressed: () async {
+    // Tutup dialog dulu
+    Navigator.of(context, rootNavigator: true).pop();
+
+    // Delay sebentar agar Navigator selesai pop
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (localName != null) {
+      await _cancelSwapShift(localName!, day);
+
+      // Pakai parentContext yang sudah valid (Scaffold utama)
+      if (mounted && parentContext != null) {
+        showTopNotification(
+          parentContext!,
+          message: 'Tukar shift berhasil dibatalkan untuk tanggal ${day.day}',
+          success: true,
         );
-        setState(() {});
       }
-    },
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.red.shade600,
-    ),
-    child: const Text(
-      'Batalkan Tukar Shift',
-      style: TextStyle(color: Colors.white),
-    ),
-  )
+
+      setState(() {}); // refresh UI
+    }
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.red.shade600,
+  ),
+  child: const Text(
+    'Batalkan Tukar Shift',
+    style: TextStyle(color: Colors.white),
+  ),
+)
+
 else if (hasSwapShift && swapStatusLocal == '1')
   ElevatedButton.icon(
   onPressed: () {
@@ -994,6 +1005,7 @@ Widget _infoBar({
 
   @override
   Widget build(BuildContext context) {
+    
     List<int> pending = [];
     List<int> approved = [];
     liburEvents.forEach((date, status) {

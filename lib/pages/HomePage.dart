@@ -2,6 +2,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tap1/main.dart';
 import 'package:tap1/pages/notification.dart';
@@ -23,6 +24,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+    late BuildContext scaffoldContext;
   final locationService = LocationService();
   final attendanceService = AttendanceService();
 final Random random = Random();
@@ -32,7 +35,7 @@ final Random random = Random();
   Duration remainingTime = Duration.zero;
   DateTime? _masukTime; // jam masuk shift
   late final VoidCallback onLogoutTap; 
-  
+
   double? latitude;
   double? longitude;
   double? accuracy;
@@ -40,7 +43,7 @@ final Random random = Random();
   String? anomalyText;
 
   String localName = '';
-  String _currentShift = '';
+  String _currentShift = 'Balum ada Shift';
 Color _phaseColor(TimePhase phase) {
   switch (phase) {
     case TimePhase.TENGGANG_MASUK:
@@ -76,7 +79,7 @@ IconData _phaseIcon(TimePhase phase) {
 }
 
 Future<void> _initAttendance() async {
-  await attendanceService.loadShiftTimesFromLocal();   // load jam shift
+ // load jam shift
   await attendanceService.loadLiburFromFirestore();    // load data libur
   setState(() {}); // update UI agar tombol absen ter-disable jika hari libur
 }
@@ -85,74 +88,72 @@ Future<void> _initAttendance() async {
   late Animation<double> _fadeAnimation;
 Timer? _countdownTimer;
 @override
-@override
 void initState() {
   super.initState();
-SharedPreferences.getInstance().then((prefs) {
-  final userName = prefs.getString('nama') ?? 'User';
-  attendanceService.loadPermitFromFirestore(userName).then((_) {
-    setState(() {});
-  });
-});
+ SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Mode immersiveSticky = status bar & navigation bar hilang, tapi bisa swipe muncul sementara
 
+  // Jalankan semua setup async setelah frame pertama
   WidgetsBinding.instance.addPostFrameCallback((_) async {
-    await _initAttendance();
+    final prefs = await SharedPreferences.getInstance();
+    final userName = prefs.getString('nama') ?? 'User';
+    final localShift = prefs.getString('shift') ?? 'Belum ada';
+
+    // 1️⃣ Load shift hari ini (swap prioritas)
+    await attendanceService.loadShiftHariIni(userName);
+
+    // 2️⃣ Update shift di UI
+    if (!mounted) return;
+    setState(() {
+      _currentShift = attendanceService.shiftHariIni ?? localShift;
+    });
+
+    // 3️⃣ Load izin absen & hari libur
+    await attendanceService.loadPermitFromFirestore(userName);
+    await attendanceService.loadLiburFromFirestore();
+
+    // 4️⃣ Reset daily status jika perlu
     attendanceService.checkResetDaily();
+
+    // 5️⃣ Load nama lokal & lokasi
     _loadLocalName();
     _getLocation();
   });
-    attendanceService.loadLiburFromFirestore();   
- attendanceService.checkResetDaily();
-  // Timer utama untuk jam sekarang + update countdown
+
+  // Timer utama untuk update jam sekarang + countdown
   timer = Timer.periodic(const Duration(seconds: 1), (_) {
     if (!mounted) return;
 
     setState(() {
       now = DateTime.now();
 
-      // Update countdown MASUK
+      // 🔹 Update countdown MASUK
       if (attendanceService.status == 'Belum Absen' &&
-          attendanceService.canAbsenMasuk) {
+          attendanceService.canAbsenMasuk &&
+          attendanceService.masukAkhir != null) {
         attendanceService.remainingTimeMasuk =
             attendanceService.masukAkhir!.difference(now);
         if (attendanceService.remainingTimeMasuk.isNegative) {
           attendanceService.remainingTimeMasuk = Duration.zero;
         }
       }
- attendanceService.loadShiftTimesFromLocal().then((_) {
-      setState(() {});
-    });
 
-    // Timer untuk print log setiap detik
-    timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      
-    });
- if (attendanceService.status == 'Sudah Masuk') {
-  final now = DateTime.now();
-
-  // Pastikan jam pulang sudah di-set
-  if (attendanceService.pulangMulai != null && attendanceService.pulangAkhir != null) {
-    if (now.isBefore(attendanceService.pulangMulai!)) {
-      // belum waktunya pulang → hitung sisa sampai mulai pulang
-      attendanceService.remainingTime = attendanceService.pulangMulai!.difference(now);
-    } else if (now.isAfter(attendanceService.pulangAkhir!)) {
-      // sudah lewat jam pulang akhir → set zero
-      attendanceService.remainingTime = Duration.zero;
-    } else {
-      // sedang dalam interval pulang → hitung sisa sampai akhir pulang
-      attendanceService.remainingTime = attendanceService.pulangAkhir!.difference(now);
-    }
-  } else {
-    // fallback
-    attendanceService.remainingTime = Duration.zero;
-  }
-}
-
+      // 🔹 Update countdown PULANG
+      if (attendanceService.status == 'Sudah Masuk' &&
+          attendanceService.pulangMulai != null &&
+          attendanceService.pulangAkhir != null) {
+        if (now.isBefore(attendanceService.pulangMulai!)) {
+          attendanceService.remainingTime =
+              attendanceService.pulangMulai!.difference(now);
+        } else if (now.isAfter(attendanceService.pulangAkhir!)) {
+          attendanceService.remainingTime = Duration.zero;
+        } else {
+          attendanceService.remainingTime =
+              attendanceService.pulangAkhir!.difference(now);
+        }
+      }
     });
   });
-
-  _getLocation();
-  _loadLocalName();
 
   // Animasi fade
   _controller = AnimationController(
@@ -161,15 +162,8 @@ SharedPreferences.getInstance().then((prefs) {
   );
   _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
   _controller.forward();
-
-  // Load shift dari local storage
-  SharedPreferences.getInstance().then((prefs) {
-    final shift = prefs.getString('shift') ?? '';
-    if (shift.isNotEmpty) {
-      attendanceService.loadShiftTimesFromLocal();
-    }
-  });
 }
+
 
 
   @override
@@ -360,7 +354,9 @@ Future<void> _getLocation() async {
 
   @override
   Widget build(BuildContext context) {
+   
     return Scaffold(
+        key: _scaffoldKey,
       backgroundColor: Colors.white,
     drawer: AppDrawer(
   userName: localName,
@@ -384,16 +380,18 @@ SliverAppBar(
   shape: const RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
   ),
-flexibleSpace: Builder(
-  builder: (context) {
-    return HeaderWithSymbols(
-      name: localName,
-      onDrawerTap: () => Scaffold.of(context).openDrawer(), docName: '',
-    );
-  },
+  flexibleSpace: Builder(
+    
+    builder: (context) {
+      return HeaderWithSymbols(
+        name: localName,
+        onDrawerTap: () => Scaffold.of(context).openDrawer(),
+        currentShift: _currentShift.isNotEmpty ? _currentShift : 'Belum ada', docName: '',
+      );
+    },
+  ),
 ),
 
-),
   SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -405,7 +403,7 @@ flexibleSpace: Builder(
       style: const TextStyle(
           fontSize: 48, fontWeight: FontWeight.bold),
     ),
-  const SizedBox(height: 6),
+  const SizedBox(height: 0),
 
 Container(
   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
