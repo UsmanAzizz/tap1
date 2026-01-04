@@ -235,9 +235,9 @@ class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
                       color: Colors.black87,
                     ),
                     children: [
-                      const TextSpan(text: 'Molecule'),
+                      const TextSpan(text: 'Gaya Group'),
                       TextSpan(
-                        text: '.io',
+                        text: ' Absensi',
                         style: TextStyle(
                           color: Colors.blue.shade600,
                         ),
@@ -246,31 +246,36 @@ class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(height: 32),
-                TextField(
-                  controller: userIdController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
-                  decoration: InputDecoration(
-                    labelText: 'User ID',
-                    labelStyle: TextStyle(
-                        color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                    prefixIcon:
-                        Icon(Icons.person_outline, color: Colors.grey.shade600),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: Colors.blue.shade600, width: 2),
-                    ),
-                  ),
-                ),
+              TextField(
+  controller: userIdController,
+  keyboardType: TextInputType.number,
+  style: const TextStyle(
+    fontSize: 16,
+    color: Colors.black87,
+    fontWeight: FontWeight.bold, // ⬅ tebal
+  ),
+  decoration: InputDecoration(
+    labelText: 'User ID',
+    labelStyle: TextStyle(
+      color: Colors.grey.shade600,
+      fontWeight: FontWeight.bold, // ⬅ tebal
+    ),
+    prefixIcon: Icon(Icons.person_outline, color: Colors.grey.shade600),
+    filled: true,
+    fillColor: Colors.grey.shade100,
+    contentPadding:
+        const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.blue.shade600, width: 2),
+    ),
+  ),
+)
+,
                 if (errorText != null) ...[
                   const SizedBox(height: 8),
                   Text(

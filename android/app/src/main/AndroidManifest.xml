@@ -12,10 +12,9 @@
         android:required="false" />
 
     <application
-        android:label="tap1"
+        android:label="Gaya Group"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-
         <activity
             android:name=".MainActivity"
             android:exported="true"

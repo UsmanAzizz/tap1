@@ -146,7 +146,7 @@ Future<void> showSwapFieldDialog(
     showDialog(
       context: currentContext,
       builder: (context) => AlertDialog(
-        title: const Text('Pilih shift untuk swap'),
+        title: const Text(' Pilih shift untuk ditukar'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -154,51 +154,51 @@ Future<void> showSwapFieldDialog(
             itemCount: fieldNames.length,
             itemBuilder: (context, index) {
               final shiftSelected = fieldNames[index];
-              return ListTile(
-                leading: const Icon(Icons.label),
-                title: Text(shiftSelected),
-              onTap: () async {
-  try {
-    // Nama field = tanggal
-    final fieldKey = day.day.toString();
+                return ListTile(
+                  leading: const Icon(Icons.label),
+                  title: Text(shiftSelected),
+                onTap: () async {
+    try {
+      // Nama field = tanggal
+      final fieldKey = day.day.toString();
 
-    // Value = shift yang dipilih + "_0"
-    final fieldValue = "${shiftSelected}_0";
+      // Value = shift yang dipilih + "_0"
+      final fieldValue = "${shiftSelected}_0";
 
-    // Path Firestore: swap/(tahun)/(bulan 2 digit)/(user)
-    final docRef = FirebaseFirestore.instance
-        .collection('swap')
-        .doc(day.year.toString())
-        .collection(day.month.toString())
-        .doc(user);
+      // Path Firestore: swap/(tahun)/(bulan 2 digit)/(user)
+      final docRef = FirebaseFirestore.instance
+          .collection('swap')
+          .doc(day.year.toString())
+          .collection(day.month.toString())
+          .doc(user);
 
-    // Set field
-    await docRef.set({fieldKey: fieldValue}, SetOptions(merge: true));
+      // Set field
+      await docRef.set({fieldKey: fieldValue}, SetOptions(merge: true));
 
-    // Pakai showTopNotification, aman walau context berasal dari dialog
-    if (mounted) {
-      showTopNotification(
-        context, // pakai context dari widget yang masih mounted
-        success: true,
-        message:
-            'Berhasil tukar ke shift $shiftSelected untuk tanggal $fieldKey',
-      );
+      // Pakai showTopNotification, aman walau context berasal dari dialog
+      if (mounted) {
+        showTopNotification(
+          context, // pakai context dari widget yang masih mounted
+          success: true,
+          message:
+              'Berhasil tukar ke shift $shiftSelected untuk tanggal $fieldKey',
+        );
+      }
+
+      // Tutup dialog
+      Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        showTopNotification(
+          context,
+          success: false,
+          message: 'Gagal menyimpan shift: $e',
+        );
+      }
     }
+  },
 
-    // Tutup dialog
-    Navigator.pop(context);
-  } catch (e) {
-    if (mounted) {
-      showTopNotification(
-        context,
-        success: false,
-        message: 'Gagal menyimpan shift: $e',
-      );
-    }
-  }
-},
-
-              );
+                );
             },
           ),
         ),
@@ -898,24 +898,42 @@ if (!hasSwapShift && canSwapShift)
                 const SizedBox(height: 12),
 
                 // Tombol Tutup
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    backgroundColor: Colors.red.shade600.withOpacity(0.1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(32),
-                    ),
-                  ),
-                  child: const Text(
-                    'Tutup',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                )
+               TextButton(
+  onPressed: () => Navigator.pop(context),
+  style: TextButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(32),
+    ),
+    backgroundColor: null, // gradient pakai container
+  ),
+  child: Ink(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.red.shade400.withOpacity(0.8),
+          Colors.pink.shade300.withOpacity(0.8),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(32),
+    ),
+    child: Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: const Text(
+        'Tutup',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+    ),
+  ),
+)
+
               ],
             ),
           ),
@@ -1025,38 +1043,52 @@ Widget _infoBar({
 
     return Column(
       children: [
-        TableCalendar(
-          firstDay: DateTime.utc(2023, 1, 1),
-          lastDay: DateTime.utc(2030, 12, 31),
-          focusedDay: focusedDay,
-          calendarFormat: _calendarFormat,
-          availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-          onPageChanged: (focused) async {
-            setState(() => focusedDay = focused);
-            if (localName != null && localName!.isNotEmpty) {
-              await loadLiburFromFirebase(localName!, forMonth: focused);
-              await loadTelatFromFirebase(localName!, forMonth: focused);
-            }
-          },
-          onDaySelected: (selected, focused) {
-            setState(() {
-              selectedDay = selected;
-              focusedDay = focused;
-            });
-            _showAttendanceDialog(selected);
-          },
-          headerStyle: const HeaderStyle(
-            formatButtonVisible: false,
-            titleCentered: true,
-          ),
-          calendarBuilders: CalendarBuilders(
-            defaultBuilder: (context, day, focusedDay) => _buildDayCell(day),
-            todayBuilder: (context, day, focusedDay) => _buildDayCell(day),
-          ),
-          calendarStyle: const CalendarStyle(
-            todayDecoration: BoxDecoration(),
-          ),
-        ),
+      TableCalendar(
+  firstDay: DateTime.utc(2023, 1, 1),
+  lastDay: DateTime.utc(2030, 12, 31),
+  focusedDay: focusedDay,
+  calendarFormat: _calendarFormat,
+  availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+  onPageChanged: (focused) async {
+    setState(() => focusedDay = focused);
+    if (localName != null && localName!.isNotEmpty) {
+      await loadLiburFromFirebase(localName!, forMonth: focused);
+      await loadTelatFromFirebase(localName!, forMonth: focused);
+    }
+  },
+  onDaySelected: (selected, focused) {
+    setState(() {
+      selectedDay = selected;
+      focusedDay = focused;
+    });
+    _showAttendanceDialog(selected);
+  },
+  headerStyle: const HeaderStyle(
+    formatButtonVisible: false,
+    titleCentered: true,
+    titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    headerPadding: EdgeInsets.only(bottom: 8), // jarak header ke baris hari
+  ),
+  calendarStyle: CalendarStyle(
+    cellMargin: EdgeInsets.symmetric(vertical: 3, horizontal: 2), // jarak antar cell
+    cellPadding: EdgeInsets.zero, // hapus padding default
+    // untuk membuat baris lebih tinggi, tambahkan Padding di calendarBuilders
+  ),
+  calendarBuilders: CalendarBuilders(
+    defaultBuilder: (context, day, focusedDay) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6), // ⬅ atur tinggi baris
+        child: _buildDayCell(day),
+      );
+    },
+    todayBuilder: (context, day, focusedDay) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: _buildDayCell(day),
+      );
+    },
+  ),
+),
         const SizedBox(height: 0),
         if (pendingText != null || approvedText != null)
           AnimatedOpacity(
