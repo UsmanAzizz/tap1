@@ -38,13 +38,13 @@ class _BubbleWidgetState extends State<BubbleWidget>
     clouds = List.generate(cloudCount, (_) => _createCloud());
 
     // Inisialisasi pohon beriringan
-    trees = List.generate(treeCount, (i) {
-      return _MovingTree(
-        x: i / treeCount, // posisi horizontal beriringan
-        height: 20 + _random.nextInt(40), // tinggi pohon acak tapi seragam
-        speed: 0.00005 + _random.nextDouble() * 0.00005, // sangat lambat
-      );
-    });
+   trees = List.generate(treeCount, (i) {
+  return _MovingTree(
+    x: i / treeCount,
+    height: 20 + _random.nextInt(25), // 20–39 px → lebih kecil
+    speed: 0.00005 + _random.nextDouble() * 0.00005, // sangat lambat
+  );
+});
 
     _controller = AnimationController(
       vsync: this,
@@ -63,13 +63,14 @@ class _BubbleWidgetState extends State<BubbleWidget>
           }
 
           // Update pohon (bergerak sangat lambat ke kiri)
-          for (var tree in trees) {
-            tree.x -= tree.speed;
-            if (tree.x < -0.5) {
-              tree.x = 1.0 + _random.nextDouble();
-              tree.height = 50 + _random.nextInt(50);
-            }
-          }
+         for (var tree in trees) {
+  tree.x -= tree.speed;
+  if (tree.x < -0.5) {
+    tree.x = 1.0 + _random.nextDouble();
+    tree.height = 25 + _random.nextInt(5); // 20–39 px → tetap kecil
+  }
+}
+
         });
       });
 

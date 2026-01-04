@@ -120,7 +120,7 @@ class _HeaderWithSymbolsState extends State<HeaderWithSymbols>
     final screenWidth = MediaQuery.of(context).size.width;
     final containerHeight = 130.0;
 
-    final bool isNight = DateTime.now().hour >= 23;
+    final bool isNight = DateTime.now().hour >= 18;
 
     return ClipRRect(
       borderRadius: const BorderRadius.only(bottomRight: Radius.circular(28)),

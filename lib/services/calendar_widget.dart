@@ -174,6 +174,11 @@ Future<void> showSwapFieldDialog(
 
       // Set field
       await docRef.set({fieldKey: fieldValue}, SetOptions(merge: true));
+  if (mounted) {
+      setState(() {
+        swapEvents[onlyDate(day)] = fieldValue;
+      });
+    }
 
       // Pakai showTopNotification, aman walau context berasal dari dialog
       if (mounted) {
