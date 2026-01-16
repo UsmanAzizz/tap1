@@ -5,8 +5,7 @@ workflows:
     environment:
       xcode: latest
       ruby: 3.4.7
-      # Flutter akan diinstall manual, jadi versi di environment bisa dibiarkan kosong
-      flutter: ""
+      # Hapus flutter dari sini karena kita install manual
 
     scripts:
       # 1️⃣ Install Flutter 3.36.3 manually
