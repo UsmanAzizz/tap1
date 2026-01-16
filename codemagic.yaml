@@ -1,15 +1,14 @@
 workflows:
   ios-workflow:
     name: iOS Build
-    max_build_duration: 90
+    max_build_duration: 60
     environment:
       xcode: latest
-      ruby: 3.4.7  # supaya cocok dengan rbenv di Codemagic
-      cocoapods: 1.16.2  # gunakan versi stabil
+      ruby: 3.4.7
 
     scripts:
       # 1️⃣ Install Flutter 3.35.7
-      - name: Install Flutter
+      - name: Install Flutter 3.35.7
         script: |
           echo "Installing Flutter 3.35.7..."
           git clone -b 3.35.7 https://github.com/flutter/flutter.git ~/flutter
@@ -25,30 +24,27 @@ workflows:
           brew install cocoapods
           pod --version
 
-      # 3️⃣ Flutter clean
-      - name: Flutter clean
-        script: flutter clean
-
-      # 4️⃣ Remove iOS artifacts
-      - name: Remove old iOS build artifacts
+      # 3️⃣ Clean Flutter & iOS build artifacts
+      - name: Flutter clean + remove iOS artifacts
         script: |
+          flutter clean
           rm -rf ios/Pods ios/Podfile.lock ~/Library/Developer/Xcode/DerivedData
 
-      # 5️⃣ Get Flutter dependencies
+      # 4️⃣ Get Flutter dependencies
       - name: Flutter pub get
         script: flutter pub get
 
-      # 6️⃣ Pod install
+      # 5️⃣ Install pods
       - name: Pod install
         script: |
           cd ios
           pod install --repo-update
           cd ..
 
-      # 7️⃣ Build iOS simulator
+      # 6️⃣ Build iOS simulator (no codesign)
       - name: Build iOS Simulator
-        script: flutter build ios --simulator
+        script: flutter build ios --simulator --no-codesign
 
-      # 8️⃣ Build iOS device (release, no codesign)
-      - name: Build iOS (Release, no codesign)
+      # 7️⃣ Build iOS device (no codesign)
+      - name: Build iOS Device
         script: flutter build ios --release --no-codesign
