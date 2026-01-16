@@ -5,14 +5,14 @@ workflows:
     environment:
       xcode: latest
     scripts:
-      - name: Install CocoaPods
+      - name: Clean CocoaPods
         script: |
-          gem install cocoapods -v 1.13.0
+          gem uninstall cocoapods -aIx || true
 
-      - name: Fix ActiveSupport (CRITICAL)
+      - name: Install CocoaPods 1.12.1 (STABLE)
         script: |
-          gem uninstall activesupport -aIx || true
-          gem install activesupport -v 7.0.8
+          gem install cocoapods -v 1.12.1
+          pod --version
 
       - name: Pod install
         script: |
