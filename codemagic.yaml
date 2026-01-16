@@ -35,8 +35,8 @@ workflows:
           pod install --repo-update
           cd ..
 
-      # 🔥 INI SATU-SATUNYA PERUBAHAN PENTING
       - name: Build iOS (Release, no codesign)
         script: |
-          flutter build ios --release --no-codesign \
-            --xcargs "OTHER_CFLAGS= OTHER_LDFLAGS="
+          # ⚡ Build iOS tanpa codesign dan override flags -G
+          flutter build ios --release --no-codesign -- \
+            OTHER_CFLAGS="" OTHER_LDFLAGS=""
