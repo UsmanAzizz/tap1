@@ -4,8 +4,9 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
+      ruby: 3.2.2  # pastikan versi Ruby cocok untuk Cocoapods 1.12.1
     scripts:
-      - name: Install Bundler deps
+      - name: Install Bundler
         script: |
           gem install bundler
           bundle install
