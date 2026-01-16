@@ -4,7 +4,7 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      ruby: 3.4.7   # ⬅️ PENTING: samakan dengan rbenv yang ada
+      ruby: 3.4.7   # cocok dengan rbenv di Codemagic
 
     scripts:
       - name: Disable rbenv & install CocoaPods
@@ -19,14 +19,14 @@ workflows:
           which pod
           pod --version
 
+      # 🔴 INI YANG KEMARIN KURANG
+      - name: Flutter clean (WAJIB)
+        script: |
+          flutter clean
+          rm -rf ios/Pods ios/Podfile.lock
+
       - name: Flutter pub get
         script: flutter pub get
-
-      - name: Clean iOS build artifacts
-        script: |
-          cd ios
-          rm -rf Pods Podfile.lock ~/Library/Developer/Xcode/DerivedData
-          cd ..
 
       - name: Pod install
         script: |
