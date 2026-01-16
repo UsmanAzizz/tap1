@@ -43,5 +43,3 @@ post_install do |installer|
     next if pod.external_source.nil?
   end
 end
-
-end
