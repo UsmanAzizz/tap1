@@ -5,19 +5,15 @@ workflows:
     environment:
       xcode: latest
     scripts:
-      - name: Clean CocoaPods
+      - name: Install Bundler deps
         script: |
-          gem uninstall cocoapods -aIx || true
+          gem install bundler
+          bundle install
 
-      - name: Install CocoaPods 1.12.1 (STABLE)
-        script: |
-          gem install cocoapods -v 1.12.1
-          pod --version
-
-      - name: Pod install
+      - name: Pod install (via Bundler)
         script: |
           cd ios
-          pod install --repo-update
+          bundle exec pod install --repo-update
 
       - name: Build iOS
         script: |
