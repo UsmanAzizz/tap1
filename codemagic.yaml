@@ -4,12 +4,13 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      cocoapods: default
+      ruby: 3.4.7
     scripts:
       - name: Install Bundler & Gems
         script: |
           gem install bundler -v 2.7.2
           bundle _2.7.2_ install
+          gem install kconv
       - name: Flutter pub get
         script: |
           flutter pub get
