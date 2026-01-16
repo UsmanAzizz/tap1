@@ -1,10 +1,8 @@
-platform :ios, '13.0'
+platform :ios, '14.0'  # 🔹 UPGRADE iOS Deployment Target
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 # Xcode 15 fix
-if ENV['DT_TOOLCHAIN_DIR'] && !ENV['TOOLCHAIN_DIR']
-  ENV['TOOLCHAIN_DIR'] = ENV['DT_TOOLCHAIN_DIR']
-end
+ENV['TOOLCHAIN_DIR'] ||= ENV['DT_TOOLCHAIN_DIR']
 
 project 'Runner', {
   'Debug' => :debug,
@@ -51,7 +49,7 @@ post_install do |installer|
           config.build_settings[key] =
             config.build_settings[key]
               .split
-              .reject { |f| f == '-G' }
+              .reject { |f| f == '-G' }  # 🔹 Hapus opsi '-G'
               .join(' ')
         end
       end
@@ -62,7 +60,7 @@ post_install do |installer|
             .map { |p| p.gsub('$(DT_TOOLCHAIN_DIR)', '$(TOOLCHAIN_DIR)') }
       end
 
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0' # 🔹 Upgrade juga di sini
     end
   end
 
@@ -75,10 +73,13 @@ post_install do |installer|
             config.build_settings[key] =
               config.build_settings[key]
                 .split
-                .reject { |f| f == '-G' }
+                .reject { |f| f == '-G' }  # 🔹 Hapus '-G'
                 .join(' ')
           end
         end
+
+        # 🔹 Upgrade deployment target di Runner juga
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
       end
     end
   end
