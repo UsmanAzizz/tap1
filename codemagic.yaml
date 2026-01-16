@@ -5,10 +5,10 @@ workflows:
     environment:
       xcode: latest
     scripts:
-     - name: Install Bundler & Gems
-  script: |
-    gem install bundler:2.7.2
-    bundle _2.7.2_ install
+      - name: Install Bundler & Gems
+        script: |
+          gem install bundler:2.7.2
+          bundle _2.7.2_ install
 
       - name: Pod install (via Bundler)
         script: |
