@@ -5,8 +5,12 @@ workflows:
     environment:
       xcode: latest
       ruby: 3.4.7   # cocok dengan rbenv di Codemagic
+      flutter: latest  # pakai versi Flutter terbaru (3.13+)
 
     scripts:
+      # ----------------------------
+      # 1️⃣ Install CocoaPods dengan Homebrew
+      # ----------------------------
       - name: Disable rbenv & install CocoaPods
         script: |
           # Matikan rbenv supaya tidak override pod
@@ -19,24 +23,31 @@ workflows:
           which pod
           pod --version
 
-      - name: Flutter clean (WAJIB)
-        script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
+      # ----------------------------
+      # 2️⃣ Bersihkan Flutter & iOS artifacts
+      # ----------------------------
+      - name: Flutter clean
+        script: flutter clean
 
+      - name: Remove iOS build artifacts
+        script: |
+          rm -rf ios/Pods ios/Podfile.lock
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+
+      # ----------------------------
+      # 3️⃣ Install dependencies
+      # ----------------------------
       - name: Flutter pub get
         script: flutter pub get
 
       - name: Pod install
         script: |
-          export RBENV_VERSION=
-          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
           cd ios
           pod install --repo-update
           cd ..
 
+      # ----------------------------
+      # 4️⃣ Build iOS release (no codesign)
+      # ----------------------------
       - name: Build iOS (Release, no codesign)
-        script: |
-          # ⚡ Build iOS tanpa codesign dan override flags -G
-          flutter build ios --release --no-codesign -- \
-            OTHER_CFLAGS="" OTHER_LDFLAGS=""
+        script: flutter build ios --release --no-codesign
