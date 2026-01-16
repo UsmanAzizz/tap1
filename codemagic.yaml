@@ -20,7 +20,9 @@ workflows:
         script: |
           cd ios
           rm -rf Pods Podfile.lock ~/Library/Developer/Xcode/DerivedData
+          pod cache clean --all
           cd ..
+
 
       - name: Pod install (via Bundler)
         script: |
