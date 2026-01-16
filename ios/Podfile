@@ -1,6 +1,11 @@
 platform :ios, '13.0'
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Patch Xcode 15+: gunakan TOOLCHAIN_DIR jika DT_TOOLCHAIN_DIR ada
+if ENV['DT_TOOLCHAIN_DIR'] && !ENV['TOOLCHAIN_DIR']
+  ENV['TOOLCHAIN_DIR'] = ENV['DT_TOOLCHAIN_DIR']
+end
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
