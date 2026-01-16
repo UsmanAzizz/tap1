@@ -1,20 +1,19 @@
 workflows:
   ios-workflow:
-    name: iOS Build (Simulator)
-    max_build_duration: 60
+    name: iOS Build
+    max_build_duration: 90
     environment:
       xcode: latest
-      ruby: 3.4.7
+      ruby: 3.4.7  # supaya cocok dengan rbenv di Codemagic
+      cocoapods: 1.16.2  # gunakan versi stabil
 
     scripts:
-      # 1️⃣ Install Flutter 3.36.3 manually
-      - name: Install Flutter 3.36.3
+      # 1️⃣ Install Flutter 3.35.7
+      - name: Install Flutter
         script: |
-          echo "Installing Flutter 3.36.3..."
-          git clone -b 3.36.3 https://github.com/flutter/flutter.git ~/flutter
-          export PATH="$PATH:~/flutter/bin:$PATH"
-          flutter channel stable
-          flutter upgrade
+          echo "Installing Flutter 3.35.7..."
+          git clone -b 3.35.7 https://github.com/flutter/flutter.git ~/flutter
+          export PATH="$PATH:~/flutter/bin"
           flutter --version
 
       # 2️⃣ Disable rbenv & install CocoaPods
@@ -30,8 +29,8 @@ workflows:
       - name: Flutter clean
         script: flutter clean
 
-      # 4️⃣ Remove old iOS artifacts
-      - name: Remove iOS build artifacts
+      # 4️⃣ Remove iOS artifacts
+      - name: Remove old iOS build artifacts
         script: |
           rm -rf ios/Pods ios/Podfile.lock ~/Library/Developer/Xcode/DerivedData
 
@@ -39,13 +38,17 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      # 6️⃣ Install pods
+      # 6️⃣ Pod install
       - name: Pod install
         script: |
           cd ios
           pod install --repo-update
           cd ..
 
-      # 7️⃣ Build iOS for simulator (no codesign needed)
+      # 7️⃣ Build iOS simulator
       - name: Build iOS Simulator
         script: flutter build ios --simulator
+
+      # 8️⃣ Build iOS device (release, no codesign)
+      - name: Build iOS (Release, no codesign)
+        script: flutter build ios --release --no-codesign
