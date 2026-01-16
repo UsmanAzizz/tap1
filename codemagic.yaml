@@ -42,15 +42,22 @@ workflows:
           require 'xcodeproj';
           installer_path = 'ios/Pods/Pods.xcodeproj';
           project = Xcodeproj::Project.open(installer_path);
+
           project.targets.each do |target|
             target.build_configurations.each do |config|
               ['OTHER_CFLAGS','OTHER_LDFLAGS'].each do |key|
                 if config.build_settings[key]
-                  config.build_settings[key] = config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
+                  value = config.build_settings[key]
+                  if value.is_a?(Array)
+                    config.build_settings[key] = value.reject { |f| f == '-G' }
+                  elsif value.is_a?(String)
+                    config.build_settings[key] = value.split.reject { |f| f == '-G' }.join(' ')
+                  end
                 end
               end
             end
           end
+
           project.save;
           "
 
