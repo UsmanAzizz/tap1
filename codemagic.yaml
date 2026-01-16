@@ -4,16 +4,12 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      ruby: 3.4.7   # cocok dengan rbenv di Codemagic
-      flutter: latest  # pakai versi Flutter terbaru (3.13+)
+      ruby: 3.4.7
+      flutter: 3.35.7  # versi spesifik, cocok dengan lokalmu
 
     scripts:
-      # ----------------------------
-      # 1️⃣ Install CocoaPods dengan Homebrew
-      # ----------------------------
       - name: Disable rbenv & install CocoaPods
         script: |
-          # Matikan rbenv supaya tidak override pod
           export RBENV_VERSION=
           export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
@@ -23,9 +19,6 @@ workflows:
           which pod
           pod --version
 
-      # ----------------------------
-      # 2️⃣ Bersihkan Flutter & iOS artifacts
-      # ----------------------------
       - name: Flutter clean
         script: flutter clean
 
@@ -34,9 +27,6 @@ workflows:
           rm -rf ios/Pods ios/Podfile.lock
           rm -rf ~/Library/Developer/Xcode/DerivedData
 
-      # ----------------------------
-      # 3️⃣ Install dependencies
-      # ----------------------------
       - name: Flutter pub get
         script: flutter pub get
 
@@ -46,8 +36,5 @@ workflows:
           pod install --repo-update
           cd ..
 
-      # ----------------------------
-      # 4️⃣ Build iOS release (no codesign)
-      # ----------------------------
       - name: Build iOS (Release, no codesign)
         script: flutter build ios --release --no-codesign
