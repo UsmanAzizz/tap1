@@ -4,9 +4,8 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      ruby: 3.2.2  # pastikan versi Ruby cocok untuk Cocoapods 1.12.1
     scripts:
-      - name: Install Bundler
+      - name: Install Bundler & Gems
         script: |
           gem install bundler
           bundle install
@@ -14,8 +13,10 @@ workflows:
       - name: Pod install (via Bundler)
         script: |
           cd ios
+          rm -rf Pods Podfile.lock
           bundle exec pod install --repo-update
 
       - name: Build iOS
         script: |
+          flutter pub get
           flutter build ios --release --no-codesign
