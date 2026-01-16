@@ -33,15 +33,15 @@ target 'Runner' do
 end
 
 post_install do |installer|
-  # Tambahkan build settings Flutter
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
 
-  # Hapus patch external_source karena bikin crash di CocoaPods 1.12.x
-  # installer.pod_targets.each do |pod|
-  #   if pod.external_source.nil?
-  #     next
-  #   end
-  # end
+  # Patch untuk skip nil check error di CocoaPods 1.12.1+
+  installer.pod_targets.each do |pod|
+    next unless pod.respond_to?(:external_source)
+    next if pod.external_source.nil?
+  end
+end
+
 end
