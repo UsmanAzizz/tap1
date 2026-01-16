@@ -5,27 +5,22 @@ workflows:
     environment:
       xcode: latest
       ruby: 3.4.7
-      flutter: 3.35.7  # versi spesifik, cocok dengan lokalmu
+      flutter: 3.36.3  # versi kompatibel Xcode 15+
 
     scripts:
       - name: Disable rbenv & install CocoaPods
         script: |
           export RBENV_VERSION=
           export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-
           brew update
           brew install cocoapods
-
-          which pod
           pod --version
 
       - name: Flutter clean
         script: flutter clean
 
       - name: Remove iOS build artifacts
-        script: |
-          rm -rf ios/Pods ios/Podfile.lock
-          rm -rf ~/Library/Developer/Xcode/DerivedData
+        script: rm -rf ios/Pods ios/Podfile.lock ~/Library/Developer/Xcode/DerivedData
 
       - name: Flutter pub get
         script: flutter pub get
