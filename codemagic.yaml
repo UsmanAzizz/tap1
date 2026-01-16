@@ -9,18 +9,26 @@ workflows:
         script: |
           rbenv install 3.2.2 || true
           rbenv global 3.2.2
+          rbenv rehash
           ruby -v
+          which ruby
 
-      - name: Install CocoaPods
+      - name: Clean old CocoaPods
+        script: |
+          gem uninstall cocoapods -aIx || true
+
+      - name: Install CocoaPods (Ruby 3.2)
         script: |
           gem install cocoapods -v 1.13.0
+          rbenv rehash
           pod --version
+          which pod
 
       - name: Pod install
         script: |
           cd ios
-          pod install
+          pod install --repo-update
 
-      - name: Build iOS
+      - name: Build iOS (Flutter)
         script: |
           flutter build ios --release --no-codesign
