@@ -4,21 +4,20 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      ruby: 3.4.7
     scripts:
       - name: Install Bundler & Gems
         script: |
           gem install bundler -v 2.7.2
+          gem install backports-kconv   # <-- tambahan ini
           bundle _2.7.2_ install
-          gem install kconv
-      - name: Flutter pub get
-        script: |
-          flutter pub get
-      - name: Pod install
+
+      - name: Pod install (via Bundler)
         script: |
           cd ios
           rm -rf Pods Podfile.lock
           bundle exec pod install --repo-update
+
       - name: Build iOS
         script: |
+          flutter pub get
           flutter build ios --release --no-codesign
