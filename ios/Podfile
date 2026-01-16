@@ -1,7 +1,6 @@
 platform :ios, '13.0'
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
-# Patch Xcode 15+: gunakan TOOLCHAIN_DIR jika DT_TOOLCHAIN_DIR ada
 if ENV['DT_TOOLCHAIN_DIR'] && !ENV['TOOLCHAIN_DIR']
   ENV['TOOLCHAIN_DIR'] = ENV['DT_TOOLCHAIN_DIR']
 end
@@ -41,7 +40,7 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
-    # Patch LIBRARY_SEARCH_PATHS untuk Xcode 15+
+    # Patch Xcode 15
     target.build_configurations.each do |config|
       if config.build_settings['LIBRARY_SEARCH_PATHS']
         config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].map do |path|

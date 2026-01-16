@@ -7,11 +7,11 @@ workflows:
       xcode: latest
 
     scripts:
-      - name: Install Bundler & CocoaPods
+      - name: Install Bundler & Gems
         script: |
           gem install bundler -v 2.7.2
           bundle install
-          # bersihkan cocoapods sistem jika ada
+          # Hapus CocoaPods sistem jika ada
           sudo gem uninstall cocoapods -a || true
           sudo gem cleanup || true
 
@@ -22,7 +22,6 @@ workflows:
         script: |
           cd ios
           rm -rf Pods Podfile.lock ~/Library/Developer/Xcode/DerivedData
-          pod cache clean --all
           cd ..
 
       - name: Pod install (via Bundler)
