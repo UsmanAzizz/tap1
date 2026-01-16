@@ -3,6 +3,8 @@ source "https://rubygems.org"
 # Bundler versi kompatibel
 gem "bundler", "~> 2.7.2"
 
-# Gunakan versi Cocoapods stabil & kompatibel dengan ActiveSupport < 7.1
-gem "cocoapods", "1.12.1"
+# CocoaPods versi stabil & kompatibel Flutter + Xcode 15+
+gem "cocoapods", "1.16.2"
+
+# ActiveSupport versi kompatibel dengan CocoaPods
 gem "activesupport", "7.0.8"

@@ -40,11 +40,14 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
-  end
 
-  # Patch untuk skip nil check error di CocoaPods 1.12.1+
-  installer.pod_targets.each do |pod|
-    next unless pod.respond_to?(:external_source)
-    next if pod.external_source.nil?
+    # Patch LIBRARY_SEARCH_PATHS untuk Xcode 15+
+    target.build_configurations.each do |config|
+      if config.build_settings['LIBRARY_SEARCH_PATHS']
+        config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].map do |path|
+          path.gsub('$(DT_TOOLCHAIN_DIR)', '$(TOOLCHAIN_DIR)')
+        end
+      end
+    end
   end
 end
