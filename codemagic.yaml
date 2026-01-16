@@ -5,30 +5,20 @@ workflows:
     environment:
       xcode: latest
     scripts:
-      - name: Force Ruby 3.2.2
-        script: |
-          rbenv install 3.2.2 || true
-          rbenv global 3.2.2
-          rbenv rehash
-          ruby -v
-          which ruby
-
-      - name: Clean old CocoaPods
-        script: |
-          gem uninstall cocoapods -aIx || true
-
-      - name: Install CocoaPods (Ruby 3.2)
+      - name: Install CocoaPods
         script: |
           gem install cocoapods -v 1.13.0
-          rbenv rehash
-          pod --version
-          which pod
+
+      - name: Fix ActiveSupport (CRITICAL)
+        script: |
+          gem uninstall activesupport -aIx || true
+          gem install activesupport -v 7.0.8
 
       - name: Pod install
         script: |
           cd ios
           pod install --repo-update
 
-      - name: Build iOS (Flutter)
+      - name: Build iOS
         script: |
           flutter build ios --release --no-codesign
