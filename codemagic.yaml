@@ -7,12 +7,11 @@ workflows:
       xcode: latest
 
     scripts:
-      - name: Reinstall Bundler & CocoaPods
+      - name: Install Homebrew CocoaPods
         script: |
-          sudo gem uninstall cocoapods -a || true
-          sudo gem cleanup || true
-          gem install bundler -v 2.7.2
-          bundle install
+          brew update
+          brew install cocoapods
+          pod --version
 
       - name: Flutter pub get
         script: flutter pub get
@@ -23,10 +22,10 @@ workflows:
           rm -rf Pods Podfile.lock ~/Library/Developer/Xcode/DerivedData
           cd ..
 
-      - name: Pod install (via Bundler)
+      - name: Pod install
         script: |
           cd ios
-          bundle exec pod install --repo-update
+          pod install --repo-update
           cd ..
 
       - name: Build iOS (Release, no codesign)
