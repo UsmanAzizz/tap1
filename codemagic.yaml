@@ -7,13 +7,12 @@ workflows:
       xcode: latest
 
     scripts:
-      - name: Install Bundler & Gems
+      - name: Reinstall Bundler & CocoaPods
         script: |
-          gem install bundler -v 2.7.2
-          bundle install
-          # Hapus CocoaPods sistem jika ada
           sudo gem uninstall cocoapods -a || true
           sudo gem cleanup || true
+          gem install bundler -v 2.7.2
+          bundle install
 
       - name: Flutter pub get
         script: flutter pub get
