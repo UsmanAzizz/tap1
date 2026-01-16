@@ -1,6 +1,8 @@
 source "https://rubygems.org"
 
-# Versi Cocoapods stabil dan kompatibel dengan ActiveSupport < 7.1
+# Bundler versi kompatibel
+gem "bundler", "~> 2.7.2"
+
+# Gunakan versi Cocoapods stabil & kompatibel dengan ActiveSupport < 7.1
 gem "cocoapods", "1.12.1"
 gem "activesupport", "7.0.8"
-gem "bundler", "~> 2.4"

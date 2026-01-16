@@ -37,7 +37,7 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
   end
 
-  # Patch untuk skip nil check error
+  # Patch untuk skip nil check error di CocoaPods 1.12.1
   installer.pod_targets.each do |pod|
     if pod.external_source.nil?
       next

@@ -4,6 +4,7 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
+      ruby: 3.2.2
     scripts:
       - name: Install Bundler & Gems
         script: |
