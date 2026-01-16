@@ -3,9 +3,9 @@ workflows:
     name: iOS Build
     max_build_duration: 60
     environment:
-      ruby: 3.2.2          # Versi Ruby compatible dengan CocoaPods
+      ruby: 3.2.2          # Ruby compatible dengan CocoaPods
       xcode: latest
-      cocoapods: 1.12.1    # Pastikan sesuai versi Podfile
+      cocoapods: 1.16.2    # Update ke versi minimum yang direkomendasikan
     scripts:
       - name: Install Bundler & Gems
         script: |
@@ -16,11 +16,17 @@ workflows:
         script: |
           flutter pub get
 
+      - name: Clean iOS build artifacts
+        script: |
+          cd ios
+          rm -rf Pods Podfile.lock ~/Library/Developer/Xcode/DerivedData
+          cd ..
+
       - name: Pod install (via Bundler)
         script: |
           cd ios
-          rm -rf Pods Podfile.lock
           bundle exec pod install --repo-update
+          cd ..
 
       - name: Build iOS
         script: |
