@@ -8,8 +8,12 @@ workflows:
       - name: Install Bundler & Gems
         script: |
           gem install bundler -v 2.7.2
-          gem install backports-kconv   # <-- tambahan ini
+          gem install backports-kconv
           bundle _2.7.2_ install
+
+      - name: Flutter pub get
+        script: |
+          flutter pub get
 
       - name: Pod install (via Bundler)
         script: |
@@ -19,5 +23,4 @@ workflows:
 
       - name: Build iOS
         script: |
-          flutter pub get
           flutter build ios --release --no-codesign
