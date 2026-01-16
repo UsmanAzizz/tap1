@@ -36,17 +36,19 @@ workflows:
           pod install --repo-update
           cd ..
 
-      - name: Patch Pods to remove -G
+      - name: Patch Pods + Runner to remove -G
         script: |
           ruby -e "
           require 'xcodeproj';
-          installer_path = 'ios/Pods/Pods.xcodeproj';
-          project = Xcodeproj::Project.open(installer_path);
 
-          project.targets.each do |target|
-            target.build_configurations.each do |config|
-              ['OTHER_CFLAGS','OTHER_LDFLAGS'].each do |key|
-                if config.build_settings[key]
+          # ---- Patch Pods.xcodeproj ----
+          pods_proj_path = 'ios/Pods/Pods.xcodeproj'
+          if File.exist?(pods_proj_path)
+            pods_proj = Xcodeproj::Project.open(pods_proj_path)
+            pods_proj.targets.each do |target|
+              target.build_configurations.each do |config|
+                ['OTHER_CFLAGS','OTHER_LDFLAGS'].each do |key|
+                  next unless config.build_settings[key]
                   value = config.build_settings[key]
                   if value.is_a?(Array)
                     config.build_settings[key] = value.reject { |f| f == '-G' }
@@ -54,11 +56,32 @@ workflows:
                     config.build_settings[key] = value.split.reject { |f| f == '-G' }.join(' ')
                   end
                 end
+                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
               end
             end
+            pods_proj.save
           end
 
-          project.save;
+          # ---- Patch Runner.xcodeproj ----
+          runner_proj_path = 'ios/Runner.xcodeproj'
+          if File.exist?(runner_proj_path)
+            runner_proj = Xcodeproj::Project.open(runner_proj_path)
+            runner_proj.native_targets.each do |target|
+              target.build_configurations.each do |config|
+                ['OTHER_CFLAGS','OTHER_LDFLAGS'].each do |key|
+                  next unless config.build_settings[key]
+                  value = config.build_settings[key]
+                  if value.is_a?(Array)
+                    config.build_settings[key] = value.reject { |f| f == '-G' }
+                  elsif value.is_a?(String)
+                    config.build_settings[key] = value.split.reject { |f| f == '-G' }.join(' ')
+                  end
+                end
+                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+              end
+            end
+            runner_proj.save
+          end
           "
 
       - name: Build iOS (Release, no codesign)
