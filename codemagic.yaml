@@ -4,23 +4,20 @@ workflows:
     max_build_duration: 60
     environment:
       xcode: latest
-      ruby: 3.2.2
+      cocoapods: default
     scripts:
       - name: Install Bundler & Gems
         script: |
-          gem install bundler:2.7.2
+          gem install bundler -v 2.7.2
           bundle _2.7.2_ install
-
-      - name: Flutter Pub Get
+      - name: Flutter pub get
         script: |
           flutter pub get
-
-      - name: Pod install (via Bundler)
+      - name: Pod install
         script: |
           cd ios
           rm -rf Pods Podfile.lock
           bundle exec pod install --repo-update
-
       - name: Build iOS
         script: |
           flutter build ios --release --no-codesign
