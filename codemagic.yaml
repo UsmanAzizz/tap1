@@ -2,7 +2,7 @@ workflows:
   ios-release:
     name: iOS Release Build
     environment:
-      flutter: 3.12.3       # gunakan versi Flutter bawaan runner
+      flutter: 3.13.0       # gunakan versi Flutter bawaan runner
       xcode: latest         # Xcode 14+ untuk Firebase 6.x
       # ruby tidak perlu di-set, pakai Ruby bawaan runner
 
