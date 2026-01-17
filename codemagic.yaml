@@ -8,14 +8,16 @@ workflows:
       ruby: 3.4.7
 
     scripts:
-      - name: Flutter clean
+      - name: Clean Flutter
         script: flutter clean
-      - name: Flutter pub get
+      - name: Get dependencies
         script: flutter pub get
       - name: Install pods
         script: |
           cd ios
-          pod install --repo-update
+          rm -rf Pods Podfile.lock
+          pod repo update
+          pod install
           cd ..
       - name: Build iOS Release
         script: flutter build ios --release --no-codesign

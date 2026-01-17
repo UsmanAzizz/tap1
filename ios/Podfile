@@ -1,11 +1,6 @@
-# ios/Podfile
-
 platform :ios, '14.0'
 
-# Disable CocoaPods analytics
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-
-# Ignore all warnings
 inhibit_all_warnings!
 
 use_frameworks!
