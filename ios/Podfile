@@ -1,12 +1,14 @@
 platform :ios, '14.0'
 
+# Disable warnings
 inhibit_all_warnings!
 use_frameworks!
 use_modular_headers!
 
 target 'Runner' do
-  # Install Flutter pods (Flutter 3.x)
-  install_all_flutter_pods('../')
+  # Semua Flutter pods otomatis akan diambil via flutter
+  # Tidak perlu memanggil podhelper.rb
+  flutter_install_ios_pods(File.dirname(File.realpath(__FILE__)))
 
   post_install do |installer|
     installer.pods_project.targets.each do |target|

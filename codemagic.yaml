@@ -1,39 +1,25 @@
 workflows:
   ios-release:
     name: iOS Release Build
-    max_build_duration: 60
     environment:
-      flutter: 3.35.7  # ganti sesuai project
-      xcode: 15.5       # pastikan compatible dengan Flutter
+      flutter: 3.35.7
+      xcode: 16.4
       cocoapods: 1.16.2
       ruby: 3.4.7
 
     scripts:
-      # 1. Bersihkan cache Flutter
       - name: Flutter clean
         script: flutter clean
-
-      # 2. Hapus Pods lama & DerivedData
-      - name: Remove old iOS artifacts
-        script: |
-          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
-          rm -rf ~/Library/Developer/Xcode/DerivedData
-
-      # 3. Ambil dependencies Flutter
       - name: Flutter pub get
         script: flutter pub get
-
-      # 4. Install pods + patch -G
-      - name: Pod install
+      - name: Install pods
         script: |
           cd ios
           pod install --repo-update
-          ruby -pi -e 'gsub(/\s?-G\s?/, " ")' Pods/Pods.xcodeproj/project.pbxproj
           cd ..
-
-      # 5. Build iOS release tanpa codesign
       - name: Build iOS Release
-        script: flutter build ipa --release --no-codesign
+        script: flutter build ios --release --no-codesign
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/iphoneos/*.app
+      - build/ios/iphoneos/*.ipa
