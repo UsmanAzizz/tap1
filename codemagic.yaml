@@ -41,12 +41,6 @@ workflows:
           flutter pub get         # pastikan semua dependency terambil
           flutter build ios --release --no-codesign
 
-    caching:
-      paths:
-        - $HOME/.pub-cache
-        - ios/Pods
-        - ios/Flutter/Flutter.framework
-
     artifacts:
       - build/ios/iphoneos/*.app
       - build/ios/iphoneos/*.ipa
