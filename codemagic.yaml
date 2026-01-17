@@ -1,71 +1,43 @@
 workflows:
-  ios-workflow:
-    name: iOS Build Fast & Future-Proof
+  ios-release:
+    name: iOS Release Build
     max_build_duration: 60
-
     environment:
+      flutter: 3.35.7 # ganti sesuai versi project
+      xcode: 15.3
+      cocoapods: 1.16.2
       ruby: 3.4.7
+      vars:
+        PROJECT_DIR: $CM_BUILD_DIR
 
     scripts:
-      # ===============================
-      # 0️⃣ Fast wipe only for safety (not full VM)
-      # ===============================
-      - name: CLEAN LOCAL BUILD ARTIFACTS
-        script: |
-          echo "===== CLEAN LOCAL BUILD ARTIFACTS ====="
-          rm -rf build
-          rm -rf ios/DerivedData || true
-          rm -rf ios/.symlinks || true
-
-      # ===============================
-      # 1️⃣ Flutter
-      # ===============================
-      - name: Install Flutter 3.36.3
-        script: |
-          git clone -b 3.36.3 https://github.com/flutter/flutter.git ~/flutter
-          export PATH="$PATH:~/flutter/bin"
-          flutter --version
-
+      # 1. Bersihkan cache Flutter
       - name: Flutter clean
         script: flutter clean
 
+      # 2. Hapus Pods lama & DerivedData
+      - name: Remove old iOS artifacts
+        script: |
+          rm -rf ios/Pods ios/Podfile.lock
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+
+      # 3. Ambil dependencies Flutter
       - name: Flutter pub get
         script: flutter pub get
 
-      # ===============================
-      # 2️⃣ Pod install (cache-friendly)
-      # ===============================
-      - name: Install Pods
+      # 4. Install pods + patch -G flag
+      - name: Pod install with patch
         script: |
           cd ios
           pod install --repo-update
+          # Hapus flag -G di semua build file
+          ruby -pi -e 'gsub(/\s?-G\s?/, " ")' Pods/Pods.xcodeproj/project.pbxproj
           cd ..
 
-      # ===============================
-      # 3️⃣ Strip -G from all xcconfig (future-proof)
-      # ===============================
-      - name: STRIP -G FROM ALL XCCONFIG
-        script: |
-          echo "===== STRIPPING -G FLAG FROM XCCONFIG ====="
-          find ios -name "*.xcconfig" -exec sed -i 's/ -G//g' {} \;
-          find ios -name "*.xcconfig" -exec sed -i 's/-G //g' {} \;
-          find ios -name "*.xcconfig" -exec sed -i 's/-G//g' {} \;
-
-      # ===============================
-      # 4️⃣ Patch BoringSSL / gRPC per-file COMPILER_FLAGS (future-proof)
-      # ===============================
-      - name: PATCH BORINGSSL / GRPC COMPILER_FLAGS
-        script: |
-          echo "===== PATCHING ALL -GCC WARNINGS IN Pods.xcodeproj ====="
-          PBX=ios/Pods/Pods.xcodeproj/project.pbxproj
-          sed -i 's/-GCC_WARN_INHIBIT_ALL_WARNINGS//g' $PBX
-          sed -i 's/-G//g' $PBX
-          sed -i 's/  / /g' $PBX
-          echo "===== VERIFY PATCH ====="
-          grep -R "GCC_WARN_INHIBIT" ios/Pods || echo "✅ ALL FLAGS REMOVED"
-
-      # ===============================
-      # 5️⃣ Build iOS Release (no codesign)
-      # ===============================
+      # 5. Build iOS release tanpa codesign
       - name: Build iOS Release
         script: flutter build ios --release --no-codesign
+
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - build/ios/iphoneos/*.ipa
