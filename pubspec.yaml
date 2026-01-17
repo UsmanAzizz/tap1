@@ -31,16 +31,22 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # UI
   cupertino_icons: ^1.0.8
-  geolocator: ^10.1.0
-  url_launcher: ^6.3.2
   table_calendar: ^3.2.0
+  url_launcher: ^6.3.2
+
+  # Storage / State
   shared_preferences: ^2.5.4
+
+  # Location
+  geolocator: ^10.1.0
 
   # Firebase
   firebase_core: ^4.3.0
   cloud_firestore: ^6.1.1
   firebase_analytics: ^12.1.0
+
 
   
 dev_dependencies:
