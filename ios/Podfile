@@ -1,25 +1,28 @@
+# ios/Podfile
+
 platform :ios, '14.0'
 
-# Disable warnings
+# Disable CocoaPods analytics
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# Ignore warnings
 inhibit_all_warnings!
+
 use_frameworks!
 use_modular_headers!
 
 target 'Runner' do
-  # Semua Flutter pods otomatis akan diambil via flutter
-  # Tidak perlu memanggil podhelper.rb
-  flutter_install_ios_pods(File.dirname(File.realpath(__FILE__)))
+  # Pods for Runner
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__)) rescue nil
 
   post_install do |installer|
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
-          if config.build_settings[key]
-            config.build_settings[key] =
-              config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
-          end
-        end
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+        %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
+          next unless config.build_settings[key]
+          config.build_settings[key] = config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
+        end
       end
     end
   end
