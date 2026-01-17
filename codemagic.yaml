@@ -1,12 +1,37 @@
 workflows:
   ios-workflow:
-    name: iOS Build
+    name: iOS Build (Hard Reset)
     max_build_duration: 60
 
     environment:
       ruby: 3.4.7
 
     scripts:
+      # ===============================
+      # 🔥 FORCE WIPE ALL CACHE (WAJIB)
+      # ===============================
+      - name: FORCE WIPE ALL CACHE
+        script: |
+          echo "===== FORCE WIPE CODEMAGIC VM ====="
+          rm -rf ~/.cocoapods
+          rm -rf ~/Library/Caches/CocoaPods
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+          rm -rf ~/.pub-cache
+          rm -rf ~/.dartServer
+          rm -rf ios/Pods
+          rm -rf ios/Podfile.lock
+          rm -rf ios/.symlinks
+          rm -rf build
+
+      - name: Verify clean state
+        script: |
+          echo "===== VERIFY CLEAN ====="
+          ls ios/Pods && echo "❌ Pods still exist" || echo "✅ Pods clean"
+          ls build && echo "❌ build dir exists" || echo "✅ build clean"
+
+      # ===============================
+      # FLUTTER
+      # ===============================
       - name: Install Flutter 3.36.3
         script: |
           git clone -b 3.36.3 https://github.com/flutter/flutter.git ~/flutter
@@ -14,19 +39,14 @@ workflows:
           flutter --version
 
       - name: Flutter clean
-        script: |
-          flutter clean
-
-      - name: Remove old iOS artifacts
-        script: |
-          rm -rf ios/Pods
-          rm -rf ios/Podfile.lock
-          rm -rf ~/Library/Developer/Xcode/DerivedData
+        script: flutter clean
 
       - name: Flutter pub get
-        script: |
-          flutter pub get
+        script: flutter pub get
 
+      # ===============================
+      # COCOAPODS
+      # ===============================
       - name: Reinstall Pods
         script: |
           cd ios
@@ -34,20 +54,24 @@ workflows:
           pod install --repo-update
           cd ..
 
-      # 🔥 INI SENJATA UTAMA
-      - name: FORCE REMOVE -G FLAG (KILLER STEP)
+      # ===============================
+      # 🧨 KILL -G FLAG (INI KUNCINYA)
+      # ===============================
+      - name: FORCE REMOVE -G FROM ALL XCCONFIG
         script: |
-          echo "===== STRIPPING -G FLAG FROM ALL XCCONFIG ====="
+          echo "===== STRIPPING -G FLAG ====="
           find ios -name "*.xcconfig" -print
           find ios -name "*.xcconfig" -exec sed -i 's/ -G//g' {} \;
           find ios -name "*.xcconfig" -exec sed -i 's/-G //g' {} \;
           find ios -name "*.xcconfig" -exec sed -i 's/-G//g' {} \;
 
-      - name: Debug - ensure no -G remains
+      - name: Verify no -G remains
         script: |
-          echo "===== VERIFY ====="
-          grep -R " -G" ios || echo "OK: no -G flag found"
+          echo "===== VERIFY -G ====="
+          grep -R " -G" ios || echo "✅ NO -G FOUND"
 
+      # ===============================
+      # BUILD
+      # ===============================
       - name: Build iOS (Release, no codesign)
-        script: |
-          flutter build ios --release --no-codesign
+        script: flutter build ios --release --no-codesign
