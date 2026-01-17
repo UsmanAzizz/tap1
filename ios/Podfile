@@ -1,14 +1,25 @@
+# ios/Podfile
 platform :ios, '14.0'
 
-# ignore all warnings from all pods
+# Disable CocoaPods analytics
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# Ignore all warnings
 inhibit_all_warnings!
 
+# Use frameworks & modular headers if needed
 use_frameworks!
 use_modular_headers!
 
-target 'Runner' do
-  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+# Flutter pod helper
+flutter_application_path = '../'
+load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
 
+target 'Runner' do
+  # Install Flutter pods
+  install_all_flutter_pods(flutter_application_path)
+
+  # Patch untuk menghapus -G dan set deployment target
   post_install do |installer|
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
@@ -18,7 +29,6 @@ target 'Runner' do
               config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
           end
         end
-        # pastikan minimum deployment target
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
       end
     end
