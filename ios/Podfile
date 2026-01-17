@@ -7,20 +7,17 @@ ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 # Ignore all warnings
 inhibit_all_warnings!
 
-# Use frameworks & modular headers if needed
+# Use frameworks & modular headers
 use_frameworks!
 use_modular_headers!
 
-# Flutter pod helper
-flutter_application_path = '../'
-load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
-
 target 'Runner' do
   # Install Flutter pods
-  install_all_flutter_pods(flutter_application_path)
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
   # Patch untuk menghapus -G dan set deployment target
   post_install do |installer|
+    # Patch semua Pod targets
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
@@ -33,6 +30,7 @@ target 'Runner' do
       end
     end
 
+    # Patch Runner project targets
     installer.aggregate_targets.each do |aggregate_target|
       aggregate_target.user_project.native_targets.each do |native_target|
         native_target.build_configurations.each do |config|
