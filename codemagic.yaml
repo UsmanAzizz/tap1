@@ -1,40 +1,25 @@
 workflows:
   ios-workflow:
-    name: iOS Build (Hard Reset + Patch BoringSSL)
+    name: iOS Build Fast & Future-Proof
     max_build_duration: 60
 
     environment:
       ruby: 3.4.7
 
     scripts:
-      # ======================================
-      # 🔥 FORCE WIPE ALL CACHE (WAJIB)
-      # ======================================
-      - name: FORCE WIPE ALL CACHE
+      # ===============================
+      # 0️⃣ Fast wipe only for safety (not full VM)
+      # ===============================
+      - name: CLEAN LOCAL BUILD ARTIFACTS
         script: |
-          echo "===== FORCE WIPE CODEMAGIC VM ====="
-          rm -rf ~/.cocoapods
-          rm -rf ~/Library/Caches/CocoaPods
-          rm -rf ~/Library/Developer/Xcode/DerivedData
-          rm -rf ~/.pub-cache
-          rm -rf ~/.dartServer
-          rm -rf ios/Pods
-          rm -rf ios/Podfile.lock
-          rm -rf ios/.symlinks
+          echo "===== CLEAN LOCAL BUILD ARTIFACTS ====="
           rm -rf build
+          rm -rf ios/DerivedData || true
+          rm -rf ios/.symlinks || true
 
-      # ======================================
-      # 🔍 VERIFY CLEAN STATE
-      # ======================================
-      - name: Verify clean state
-        script: |
-          echo "===== VERIFY CLEAN ====="
-          ls ios/Pods && echo "❌ Pods still exist" || echo "✅ Pods clean"
-          ls build && echo "❌ build dir exists" || echo "✅ build clean"
-
-      # ======================================
-      # FLUTTER
-      # ======================================
+      # ===============================
+      # 1️⃣ Flutter
+      # ===============================
       - name: Install Flutter 3.36.3
         script: |
           git clone -b 3.36.3 https://github.com/flutter/flutter.git ~/flutter
@@ -47,48 +32,40 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      # ======================================
-      # COCOAPODS
-      # ======================================
-      - name: Reinstall Pods
+      # ===============================
+      # 2️⃣ Pod install (cache-friendly)
+      # ===============================
+      - name: Install Pods
         script: |
           cd ios
-          pod deintegrate || true
           pod install --repo-update
           cd ..
 
-      # ======================================
-      # 🧨 STRIP -G FLAG (xcconfig) – cadangan
-      # ======================================
-      - name: FORCE REMOVE -G FROM ALL XCCONFIG
+      # ===============================
+      # 3️⃣ Strip -G from all xcconfig (future-proof)
+      # ===============================
+      - name: STRIP -G FROM ALL XCCONFIG
         script: |
           echo "===== STRIPPING -G FLAG FROM XCCONFIG ====="
-          find ios -name "*.xcconfig" -print
           find ios -name "*.xcconfig" -exec sed -i 's/ -G//g' {} \;
           find ios -name "*.xcconfig" -exec sed -i 's/-G //g' {} \;
           find ios -name "*.xcconfig" -exec sed -i 's/-G//g' {} \;
 
-      - name: Verify no -G remains
+      # ===============================
+      # 4️⃣ Patch BoringSSL / gRPC per-file COMPILER_FLAGS (future-proof)
+      # ===============================
+      - name: PATCH BORINGSSL / GRPC COMPILER_FLAGS
         script: |
-          echo "===== VERIFY -G ====="
-          grep -R " -G" ios || echo "✅ NO -G FOUND"
-
-      # ======================================
-      # 🧨 PATCH BORINGSSL / GRPC PER-FILE FLAG
-      # ======================================
-      - name: PATCH BORINGSSL -GCC FLAG
-        script: |
-          echo "===== PATCHING BoringSSL / gRPC FLAGS ====="
+          echo "===== PATCHING ALL -GCC WARNINGS IN Pods.xcodeproj ====="
           PBX=ios/Pods/Pods.xcodeproj/project.pbxproj
-
           sed -i 's/-GCC_WARN_INHIBIT_ALL_WARNINGS//g' $PBX
+          sed -i 's/-G//g' $PBX
           sed -i 's/  / /g' $PBX
+          echo "===== VERIFY PATCH ====="
+          grep -R "GCC_WARN_INHIBIT" ios/Pods || echo "✅ ALL FLAGS REMOVED"
 
-          echo "===== VERIFY ====="
-          grep -R "GCC_WARN_INHIBIT" ios/Pods || echo "✅ FLAG REMOVED"
-
-      # ======================================
-      # BUILD IOS RELEASE
-      # ======================================
-      - name: Build iOS (Release, no codesign)
+      # ===============================
+      # 5️⃣ Build iOS Release (no codesign)
+      # ===============================
+      - name: Build iOS Release
         script: flutter build ios --release --no-codesign
