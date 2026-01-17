@@ -14,7 +14,8 @@ workflows:
           flutter --version
 
       - name: Flutter clean
-        script: flutter clean
+        script: |
+          flutter clean
 
       - name: Remove old iOS artifacts
         script: |
@@ -23,14 +24,30 @@ workflows:
           rm -rf ~/Library/Developer/Xcode/DerivedData
 
       - name: Flutter pub get
-        script: flutter pub get
+        script: |
+          flutter pub get
 
       - name: Reinstall Pods
         script: |
           cd ios
-          pod deintegrate
+          pod deintegrate || true
           pod install --repo-update
           cd ..
 
+      # 🔥 INI SENJATA UTAMA
+      - name: FORCE REMOVE -G FLAG (KILLER STEP)
+        script: |
+          echo "===== STRIPPING -G FLAG FROM ALL XCCONFIG ====="
+          find ios -name "*.xcconfig" -print
+          find ios -name "*.xcconfig" -exec sed -i 's/ -G//g' {} \;
+          find ios -name "*.xcconfig" -exec sed -i 's/-G //g' {} \;
+          find ios -name "*.xcconfig" -exec sed -i 's/-G//g' {} \;
+
+      - name: Debug - ensure no -G remains
+        script: |
+          echo "===== VERIFY ====="
+          grep -R " -G" ios || echo "OK: no -G flag found"
+
       - name: Build iOS (Release, no codesign)
-        script: flutter build ios --release --no-codesign
+        script: |
+          flutter build ios --release --no-codesign
