@@ -2,8 +2,8 @@ workflows:
   ios-release:
     name: iOS Release Build
     environment:
-      flutter: 3.35.7          # Versi Flutter sesuai SDK proyek
-      xcode: latest           # Gunakan Xcode 14+ untuk Firebase 6.x
+      flutter: 3.12.3          # versi Flutter tersedia di runner
+      xcode: latest            # gunakan Xcode 14+ untuk Firebase 6.x
       ruby: 3.4.6
       vars:
         FLUTTER_BUILD_MODE: release
@@ -31,15 +31,21 @@ workflows:
       - name: Install iOS Pods
         script: |
           cd ios
-          pod repo update      # pastikan repo pods terbaru
-          pod install          # install plugin termasuk cloud_firestore
+          pod repo update         # pastikan repo pods terbaru
+          pod install             # install plugin termasuk cloud_firestore
           cd ..
 
       - name: Build iOS Release
         script: |
-          flutter clean        # optional, memastikan build fresh
-          flutter pub get      # pastikan semua dependency terambil
+          flutter clean           # optional, memastikan build fresh
+          flutter pub get         # pastikan semua dependency terambil
           flutter build ios --release --no-codesign
+
+    caching:
+      paths:
+        - $HOME/.pub-cache
+        - ios/Pods
+        - ios/Flutter/Flutter.framework
 
     artifacts:
       - build/ios/iphoneos/*.app
