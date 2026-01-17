@@ -1,25 +1,14 @@
 platform :ios, '14.0'
 
-# Disable CocoaPods analytics
-ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-
-# Ignore all warnings
 inhibit_all_warnings!
-
 use_frameworks!
 use_modular_headers!
 
-# Flutter pod helper path (Flutter 3.x)
-flutter_application_path = '../'
-load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
-
 target 'Runner' do
-  # Install Flutter pods
-  install_all_flutter_pods(flutter_application_path)
+  # Install Flutter pods (Flutter 3.x)
+  install_all_flutter_pods('../')
 
-  # Patch untuk menghapus -G dan set deployment target
   post_install do |installer|
-    # Patch semua Pod targets
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
@@ -29,21 +18,6 @@ target 'Runner' do
           end
         end
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
-      end
-    end
-
-    # Patch Runner project targets
-    installer.aggregate_targets.each do |aggregate_target|
-      aggregate_target.user_project.native_targets.each do |native_target|
-        native_target.build_configurations.each do |config|
-          %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
-            if config.build_settings[key]
-              config.build_settings[key] =
-                config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
-            end
-          end
-          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
-        end
       end
     end
   end
