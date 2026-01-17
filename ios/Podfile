@@ -1,4 +1,3 @@
-# ios/Podfile
 platform :ios, '14.0'
 
 # Disable CocoaPods analytics
@@ -7,13 +6,16 @@ ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 # Ignore all warnings
 inhibit_all_warnings!
 
-# Use frameworks & modular headers
 use_frameworks!
 use_modular_headers!
 
+# Flutter pod helper path (Flutter 3.x)
+flutter_application_path = '../'
+load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
+
 target 'Runner' do
   # Install Flutter pods
-  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  install_all_flutter_pods(flutter_application_path)
 
   # Patch untuk menghapus -G dan set deployment target
   post_install do |installer|
