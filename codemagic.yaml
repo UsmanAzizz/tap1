@@ -1,15 +1,15 @@
 workflows:
   ios-workflow:
-    name: iOS Build (Hard Reset)
+    name: iOS Build (Hard Reset + Patch BoringSSL)
     max_build_duration: 60
 
     environment:
       ruby: 3.4.7
 
     scripts:
-      # ===============================
+      # ======================================
       # 🔥 FORCE WIPE ALL CACHE (WAJIB)
-      # ===============================
+      # ======================================
       - name: FORCE WIPE ALL CACHE
         script: |
           echo "===== FORCE WIPE CODEMAGIC VM ====="
@@ -23,15 +23,18 @@ workflows:
           rm -rf ios/.symlinks
           rm -rf build
 
+      # ======================================
+      # 🔍 VERIFY CLEAN STATE
+      # ======================================
       - name: Verify clean state
         script: |
           echo "===== VERIFY CLEAN ====="
           ls ios/Pods && echo "❌ Pods still exist" || echo "✅ Pods clean"
           ls build && echo "❌ build dir exists" || echo "✅ build clean"
 
-      # ===============================
+      # ======================================
       # FLUTTER
-      # ===============================
+      # ======================================
       - name: Install Flutter 3.36.3
         script: |
           git clone -b 3.36.3 https://github.com/flutter/flutter.git ~/flutter
@@ -44,9 +47,9 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      # ===============================
+      # ======================================
       # COCOAPODS
-      # ===============================
+      # ======================================
       - name: Reinstall Pods
         script: |
           cd ios
@@ -54,12 +57,12 @@ workflows:
           pod install --repo-update
           cd ..
 
-      # ===============================
-      # 🧨 KILL -G FLAG (INI KUNCINYA)
-      # ===============================
+      # ======================================
+      # 🧨 STRIP -G FLAG (xcconfig) – cadangan
+      # ======================================
       - name: FORCE REMOVE -G FROM ALL XCCONFIG
         script: |
-          echo "===== STRIPPING -G FLAG ====="
+          echo "===== STRIPPING -G FLAG FROM XCCONFIG ====="
           find ios -name "*.xcconfig" -print
           find ios -name "*.xcconfig" -exec sed -i 's/ -G//g' {} \;
           find ios -name "*.xcconfig" -exec sed -i 's/-G //g' {} \;
@@ -70,8 +73,22 @@ workflows:
           echo "===== VERIFY -G ====="
           grep -R " -G" ios || echo "✅ NO -G FOUND"
 
-      # ===============================
-      # BUILD
-      # ===============================
+      # ======================================
+      # 🧨 PATCH BORINGSSL / GRPC PER-FILE FLAG
+      # ======================================
+      - name: PATCH BORINGSSL -GCC FLAG
+        script: |
+          echo "===== PATCHING BoringSSL / gRPC FLAGS ====="
+          PBX=ios/Pods/Pods.xcodeproj/project.pbxproj
+
+          sed -i 's/-GCC_WARN_INHIBIT_ALL_WARNINGS//g' $PBX
+          sed -i 's/  / /g' $PBX
+
+          echo "===== VERIFY ====="
+          grep -R "GCC_WARN_INHIBIT" ios/Pods || echo "✅ FLAG REMOVED"
+
+      # ======================================
+      # BUILD IOS RELEASE
+      # ======================================
       - name: Build iOS (Release, no codesign)
         script: flutter build ios --release --no-codesign
