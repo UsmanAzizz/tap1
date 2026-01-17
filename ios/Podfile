@@ -5,23 +5,43 @@ platform :ios, '14.0'
 # Disable CocoaPods analytics
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
-# Ignore warnings
+# Ignore all warnings
 inhibit_all_warnings!
 
 use_frameworks!
 use_modular_headers!
 
 target 'Runner' do
-  # Pods for Runner
-  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__)) rescue nil
+  # Install Flutter pods
+  begin
+    flutter_install_all_ios_pods(File.dirname(File.realpath(__FILE__)))
+  rescue NoMethodError
+    puts "Warning: flutter_install_all_ios_pods method not found. Skipping."
+  end
 
   post_install do |installer|
+    # Update build settings for all pod targets
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
         %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
           next unless config.build_settings[key]
-          config.build_settings[key] = config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
+          config.build_settings[key] =
+            config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
+        end
+      end
+    end
+
+    # Update aggregate targets (important for Flutter plugins)
+    installer.aggregate_targets.each do |aggregate_target|
+      aggregate_target.user_project.native_targets.each do |native_target|
+        native_target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+          %w[OTHER_CFLAGS OTHER_LDFLAGS].each do |key|
+            next unless config.build_settings[key]
+            config.build_settings[key] =
+              config.build_settings[key].split.reject { |f| f == '-G' }.join(' ')
+          end
         end
       end
     end
