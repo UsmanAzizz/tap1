@@ -1,6 +1,6 @@
 workflows:
-  ios-release-simple:
-    name: Build iOS Release (with codesign)
+  ios-release-no-codesign:
+    name: Build iOS Release (no codesign)
     max_build_duration: 60
     environment:
       flutter: stable
@@ -8,22 +8,23 @@ workflows:
       cocoapods: default
       vars:
         FLUTTER_BUILD_MODE: release
-        APPLE_ID: "antarakita208@gmail.com" # Ganti dengan Apple ID kamu
-        APP_SPECIFIC_PASSWORD: "Asdf4455"  # Gunakan secret variable di Codemagic jika repo public
     scripts:
       - name: Install Flutter dependencies
         script: |
           flutter pub get
-      - name: Build iOS release with codesign
+      - name: Build iOS release without codesign
         script: |
           flutter clean
-          flutter build ios --release
-      - name: Export IPA
+          flutter build ios --release --no-codesign
+      - name: Create IPA manually
         script: |
-          xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/ios/iphoneos
-      - name: Upload to App Store Connect
-        script: |
-          xcrun altool --upload-app -f build/ios/iphoneos/Runner.ipa -t ios -u $APPLE_ID -p $APP_SPECIFIC_PASSWORD --verbose
+          # Buat folder payload
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          # Zip menjadi IPA
+          cd build/ios/iphoneos
+          zip -r Runner.ipa Payload
+          cd ../../../..
     artifacts:
       - build/ios/iphoneos/Runner.app
       - build/ios/iphoneos/Runner.ipa
