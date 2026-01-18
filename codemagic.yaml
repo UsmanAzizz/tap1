@@ -2,8 +2,8 @@ workflows:
   ios-release:
     name: iOS Release Build
     environment:
-      flutter: 3.35.7          # Versi Flutter sesuai SDK proyek
-      xcode: latest           # Gunakan Xcode 14+ untuk Firebase 6.x
+      flutter: 3.35.7        # Flutter version
+      xcode: latest          # Xcode 14+ for Firebase 6.x
       ruby: 3.4.6
       vars:
         FLUTTER_BUILD_MODE: release
@@ -12,34 +12,28 @@ workflows:
       - name: Clean Flutter project
         script: |
           flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
+          rm -rf ios/Pods ios/Podfile.lock ios/Flutter/Flutter.framework
 
       - name: Get Flutter dependencies
         script: flutter pub get
 
       - name: Setup CocoaPods
         script: |
-          # Pastikan Ruby sesuai
           rbenv install -s 3.4.6
           rbenv global 3.4.6
           ruby -v
-
-          # Install CocoaPods versi kompatibel
           gem install cocoapods -v 1.16.2
           pod --version
 
       - name: Install iOS Pods
         script: |
           cd ios
-          pod repo update      # pastikan repo pods terbaru
-          pod install          # install plugin termasuk cloud_firestore
+          pod repo update
+          pod install --repo-update
           cd ..
 
       - name: Build iOS Release
-        script: |
-          flutter clean        # optional, memastikan build fresh
-          flutter pub get      # pastikan semua dependency terambil
-          flutter build ios --release --no-codesign
+        script: flutter build ios --release --no-codesign
 
     artifacts:
       - build/ios/iphoneos/*.app
