@@ -3,10 +3,14 @@ platform :ios, '14.0'
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 inhibit_all_warnings!
 
-use_modular_headers!  # Keep this, but do NOT use `use_frameworks!`
+use_modular_headers!
+# use_frameworks!  # Jangan pakai ini untuk Firebase
 
 target 'Runner' do
-  flutter_install_all_ios_pods(File.dirname(File.realpath(__FILE__)))
+  flutter_application_path = '../'
+  load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
+
+  install_all_flutter_pods(flutter_application_path)
 
   post_install do |installer|
     installer.pods_project.targets.each do |target|
