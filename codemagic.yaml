@@ -1,24 +1,40 @@
-scripts:
-  - name: Clean Flutter project
-    script: |
-      flutter clean
-      rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter
+workflows:
+  ios-release:
+    name: iOS Release Build
+    environment:
+      flutter: 3.35.7
+      xcode: latest
+      ruby: 3.4.6
+      vars:
+        FLUTTER_BUILD_MODE: release
 
-  - name: Get Flutter dependencies
-    script: flutter pub get
+    scripts:
+      - name: Clean Flutter project
+        script: |
+          flutter clean
+          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter
 
-  - name: Generate Flutter iOS artifacts
-    script: flutter precache --ios
+      - name: Get Flutter dependencies
+        script: flutter pub get
 
-  - name: Setup CocoaPods
-    script: gem install cocoapods -v 1.16.2
+      - name: Generate Flutter iOS artifacts
+        script: flutter precache --ios
 
-  - name: Install iOS Pods
-    script: |
-      cd ios
-      pod repo update
-      pod install
-      cd ..
+      - name: Setup CocoaPods
+        script: |
+          gem install cocoapods -v 1.16.2
+          pod --version
 
-  - name: Build iOS Release
-    script: flutter build ios --release --no-codesign
+      - name: Install iOS Pods
+        script: |
+          cd ios
+          pod repo update
+          pod install
+          cd ..
+
+      - name: Build iOS Release
+        script: flutter build ios --release --no-codesign
+
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - build/ios/iphoneos/*.ipa
