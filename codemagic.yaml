@@ -2,8 +2,8 @@ workflows:
   ios-release:
     name: iOS Release Build
     environment:
-      flutter: 3.35.7
-      xcode: latest
+      flutter: 3.35.7          # versi Flutter sesuai proyek
+      xcode: latest            # gunakan Xcode terbaru (14+)
       ruby: 3.4.6
       vars:
         FLUTTER_BUILD_MODE: release
@@ -17,21 +17,22 @@ workflows:
       - name: Get Flutter dependencies
         script: flutter pub get
 
-      - name: Setup Ruby & CocoaPods
+      - name: Generate Flutter iOS artifacts
+        script: flutter precache --ios
+
+      - name: Setup CocoaPods
         script: |
           rbenv install -s 3.4.6
           rbenv global 3.4.6
+          ruby -v
           gem install cocoapods -v 1.16.2
-
-      - name: Generate Flutter iOS artifacts
-        script: flutter precache --ios
-        # Jangan build dulu, cukup generate artifacts
+          pod --version
 
       - name: Install iOS Pods
         script: |
           cd ios
           pod repo update
-          pod install --repo-update
+          pod install
           cd ..
 
       - name: Build iOS Release
