@@ -17,17 +17,16 @@ workflows:
       - name: Get Flutter dependencies
         script: flutter pub get
 
-      - name: Generate iOS Flutter artifacts
-        script: |
-          flutter precache --ios
-          flutter build ios --no-codesign
-
-      - name: Setup CocoaPods
+      - name: Setup Ruby & CocoaPods
         script: |
           rbenv install -s 3.4.6
           rbenv global 3.4.6
+          ruby -v
           gem install cocoapods -v 1.16.2
           pod --version
+
+      - name: Generate Flutter iOS artifacts
+        script: flutter precache --ios
 
       - name: Install iOS Pods
         script: |
