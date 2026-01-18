@@ -1,43 +1,24 @@
-workflows:
-  ios-release:
-    name: iOS Release Build
-    environment:
-      flutter: 3.35.7          # versi Flutter sesuai proyek
-      xcode: latest            # gunakan Xcode terbaru (14+)
-      ruby: 3.4.6
-      vars:
-        FLUTTER_BUILD_MODE: release
+scripts:
+  - name: Clean Flutter project
+    script: |
+      flutter clean
+      rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter
 
-    scripts:
-      - name: Clean Flutter project
-        script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter
+  - name: Get Flutter dependencies
+    script: flutter pub get
 
-      - name: Get Flutter dependencies
-        script: flutter pub get
+  - name: Generate Flutter iOS artifacts
+    script: flutter precache --ios
 
-      - name: Generate Flutter iOS artifacts
-        script: flutter precache --ios
+  - name: Setup CocoaPods
+    script: gem install cocoapods -v 1.16.2
 
-      - name: Setup CocoaPods
-        script: |
-          rbenv install -s 3.4.6
-          rbenv global 3.4.6
-          ruby -v
-          gem install cocoapods -v 1.16.2
-          pod --version
+  - name: Install iOS Pods
+    script: |
+      cd ios
+      pod repo update
+      pod install
+      cd ..
 
-      - name: Install iOS Pods
-        script: |
-          cd ios
-          pod repo update
-          pod install
-          cd ..
-
-      - name: Build iOS Release
-        script: flutter build ios --release --no-codesign
-
-    artifacts:
-      - build/ios/iphoneos/*.app
-      - build/ios/iphoneos/*.ipa
+  - name: Build iOS Release
+    script: flutter build ios --release --no-codesign
