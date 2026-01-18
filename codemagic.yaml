@@ -8,10 +8,8 @@ workflows:
       cocoapods: default
       vars:
         FLUTTER_BUILD_MODE: release
-        APPLE_ID: "antarakita208@gmail.com"             # Ganti dengan Apple ID kamu
-        APP_SPECIFIC_PASSWORD:
-          value: "Asdf4455"                                     # Jangan commit jika repo public, gunakan secret variable Codemagic
-          secure: true
+        APPLE_ID: "antarakita208@gmail.com" # Ganti dengan Apple ID kamu
+        APP_SPECIFIC_PASSWORD: "Asdf4455"  # Gunakan secret variable di Codemagic jika repo public
     scripts:
       - name: Install Flutter dependencies
         script: |
