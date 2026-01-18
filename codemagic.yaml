@@ -1,9 +1,8 @@
 workflows:
   ios-release:
     name: iOS Release Build
-    max_build_duration: 90
+    max_build_duration: 120
 
-    # Gunakan macOS agent
     environment:
       flutter: stable
       ruby: 3.4.6
@@ -12,11 +11,11 @@ workflows:
         FLUTTER_BUILD_MODE: release
 
     scripts:
-      # 1️⃣ Bersihkan project Flutter
+      # 1️⃣ Bersihkan project
       - name: Clean Flutter project
         script: flutter clean
 
-      # 2️⃣ Ambil dependencies Flutter
+      # 2️⃣ Get dependencies Flutter
       - name: Get Flutter dependencies
         script: flutter pub get
 
@@ -27,21 +26,23 @@ workflows:
           gem install cocoapods -v 1.16.2
           pod setup
 
-      # 4️⃣ Generate Flutter iOS artifacts & install pods
+      # 4️⃣ Generate Flutter iOS artifacts
       - name: Generate iOS Flutter artifacts
         script: |
           flutter precache --ios
-          flutter pub get
           cd ios
           pod repo update
           pod install
           cd ..
 
-      # 5️⃣ Build iOS release (no codesign, bisa sign manual nanti)
+      # 5️⃣ Build iOS for simulator first (important!)
+      - name: Build iOS simulator
+        script: flutter build ios --simulator
+
+      # 6️⃣ Build iOS release (device, no codesign)
       - name: Build iOS release
         script: flutter build ios --release --no-codesign
 
-    # 6️⃣ Simpan artifacts
     artifacts:
       - build/ios/iphoneos/*.app
       - build/ios/iphoneos/*.ipa
