@@ -1,48 +1,36 @@
 workflows:
   ios-release:
-    name: iOS Release Build
-    max_build_duration: 120
+    name: iOS Release
+    max_build_duration: 90
 
     environment:
       flutter: stable
-      ruby: 3.4.6
       xcode: latest
-      vars:
-        FLUTTER_BUILD_MODE: release
+      ruby: 3.4.6
 
     scripts:
-      # 1️⃣ Bersihkan project
-      - name: Clean Flutter project
+      - name: Flutter clean
         script: flutter clean
 
-      # 2️⃣ Get dependencies Flutter
-      - name: Get Flutter dependencies
+      - name: Get Flutter packages
         script: flutter pub get
 
-      # 3️⃣ Install CocoaPods
       - name: Install CocoaPods
         script: |
           export PATH="$HOME/.rbenv/shims:$PATH"
           gem install cocoapods -v 1.16.2
           pod setup
 
-      # 4️⃣ Generate Flutter iOS artifacts
-      - name: Generate iOS Flutter artifacts
+      - name: Install iOS pods
         script: |
           flutter precache --ios
           cd ios
-          pod repo update
-          pod install
+          pod deintegrate
+          pod install --repo-update
           cd ..
 
-      # 5️⃣ Build iOS for simulator first (important!)
-      - name: Build iOS simulator
-        script: flutter build ios --simulator
-
-      # 6️⃣ Build iOS release (device, no codesign)
-      - name: Build iOS release
+      - name: Build iOS release (no codesign)
         script: flutter build ios --release --no-codesign
 
     artifacts:
       - build/ios/iphoneos/*.app
-      - build/ios/iphoneos/*.ipa
