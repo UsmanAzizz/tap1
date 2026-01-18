@@ -2,8 +2,8 @@ workflows:
   ios-release:
     name: iOS Release Build
     environment:
-      flutter: 3.35.7        # Flutter version
-      xcode: latest          # Xcode 14+ for Firebase 6.x
+      flutter: 3.35.7         # Versi Flutter proyekmu
+      xcode: latest           # Gunakan Xcode terbaru (14+)
       ruby: 3.4.6
       vars:
         FLUTTER_BUILD_MODE: release
@@ -12,7 +12,7 @@ workflows:
       - name: Clean Flutter project
         script: |
           flutter clean
-          rm -rf ios/Pods ios/Podfile.lock ios/Flutter/Flutter.framework
+          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter/Flutter.framework ios/Flutter/Flutter.podspec
 
       - name: Get Flutter dependencies
         script: flutter pub get
