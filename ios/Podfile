@@ -4,7 +4,6 @@ ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 inhibit_all_warnings!
 
 use_modular_headers!
-# use_frameworks!  # Jangan pakai ini
 
 target 'Runner' do
   # Flutter will automatically generate pods

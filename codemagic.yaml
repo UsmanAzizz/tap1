@@ -21,12 +21,11 @@ workflows:
         script: |
           rbenv install -s 3.4.6
           rbenv global 3.4.6
-          ruby -v
           gem install cocoapods -v 1.16.2
-          pod --version
 
       - name: Generate Flutter iOS artifacts
-        script: flutter build ios --no-codesign
+        script: flutter precache --ios
+        # Jangan build dulu, cukup generate artifacts
 
       - name: Install iOS Pods
         script: |
