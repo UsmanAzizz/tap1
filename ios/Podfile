@@ -4,19 +4,8 @@ ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 inhibit_all_warnings!
 
 use_modular_headers!
-# use_frameworks!  # Jangan pakai ini untuk Firebase
+# use_frameworks!  # Jangan pakai ini
 
 target 'Runner' do
-  flutter_application_path = '../'
-  load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
-
-  install_all_flutter_pods(flutter_application_path)
-
-  post_install do |installer|
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
-      end
-    end
-  end
+  # Flutter will automatically generate pods
 end
