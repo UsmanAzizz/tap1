@@ -1,36 +1,33 @@
 workflows:
   ios-release:
     name: iOS Release
-    max_build_duration: 90
-
+    max_build_duration: 60
     environment:
       flutter: stable
       xcode: latest
-      ruby: 3.4.6
-
+      os: macOS
     scripts:
-      - name: Flutter clean
-        script: flutter clean
+      - name: Clean project
+        script: |
+          flutter clean
+          rm -rf ios/Pods ios/Runner.xcworkspace ios/Flutter/Flutter.podspec
 
-      - name: Get Flutter packages
+      - name: Get Flutter dependencies
         script: flutter pub get
+
+      - name: Generate iOS artifacts
+        script: flutter precache --ios
 
       - name: Install CocoaPods
         script: |
-          export PATH="$HOME/.rbenv/shims:$PATH"
           gem install cocoapods -v 1.16.2
-          pod setup
-
-      - name: Install iOS pods
-        script: |
-          flutter precache --ios
+          pod repo update
           cd ios
-          pod deintegrate
-          pod install --repo-update
+          pod install
           cd ..
 
-      - name: Build iOS release
+      - name: Build iOS release (no codesign)
         script: flutter build ios --release --no-codesign
 
     artifacts:
-      - build/ios/iphoneos/*.app
+      - build/ios/iphoneos/Runner.app
