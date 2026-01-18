@@ -1,20 +1,28 @@
 workflows:
-  ios-release:
-    name: iOS Release Build
+  ios-auto-sign:
+    name: iOS Build with Automatic Signing
     max_build_duration: 60
     environment:
       flutter: stable
       xcode: latest
+      cocoapods: default
+      vars:
+        # Isi dengan Apple ID yang punya akun developer
+        APPLE_ID: Encrypted(...)
+        FASTLANE_PASSWORD: Encrypted(...)
     scripts:
-      - name: Install Flutter dependencies
+      - name: Install dependencies
         script: |
           flutter pub get
-      - name: Update CocoaPods repo
+      - name: Prepare iOS
         script: |
-          gem install cocoapods --pre
-          pod repo update
-      - name: Build iOS release (no codesign)
-        script: |
+          flutter clean
           flutter build ios --release --no-codesign
+      - name: Build .ipa with automatic signing
+        script: |
+          cd ios
+          bundle exec fastlane run sigh --username $APPLE_ID --skip_certificate_verification
+          cd ..
+          flutter build ipa --release --export-options-plist ios/ExportOptions.plist
     artifacts:
       - build/ios/ipa/*.ipa
